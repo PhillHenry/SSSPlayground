@@ -19,23 +19,16 @@ object ProducerMain {
     val topicName = args(3)
 
     val props = new Properties()
-    props.put("zookeeper.connect",                toLocalEndPoint(hostname, zkPort))
     props.put("bootstrap.servers",                toLocalEndPoint(hostname, kPort))
 //    props.put("port",                             kPort.toString)
-    props.put("broker.id",                        "0")
-    props.put("num.partitions",                   "3")
     props.put("key.serializer",                   classOf[org.apache.kafka.common.serialization.StringSerializer].getName)
     props.put("value.serializer",                 classOf[org.apache.kafka.common.serialization.StringSerializer].getName)
-    props.put("offsets.topic.replication.factor", "1")
-    props.put("auto.offset.reset",                "earliest")
-    props.put("host.name",                        hostname)
-    props.put("advertised.host.name",             hostname)
 
     val producer  = new KafkaProducer[String, String](props)
 
     def json(): String = Random.alphanumeric.filter(_.isLetter).take(1000).mkString
 
-    val jFutures = (1 to 1000).map { i =>
+    val jFutures = (1 to 10).map { i =>
       val jFuture = producer.send(new ProducerRecord[String, String](topicName, json), new Callback {
         override def onCompletion(metadata: RecordMetadata, x: Exception) = {}
       })

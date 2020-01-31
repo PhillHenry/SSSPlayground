@@ -46,7 +46,7 @@ object ConsumeKafkaMain {
 
   type KafkaParseFn = (String, String) => Option[Payload]
 
-  val trivialKafkaParseFn: KafkaParseFn = { case (k, v) => Some(Payload(v, (k.hashCode % 10).toString)) }
+  val trivialKafkaParseFn: KafkaParseFn = { case (_, v) => Some(Payload(v, (v.hashCode % 10).toString)) }
 
   def streamFromKafka(session: SparkSession, kafkaUrl: String, topicName: String, fn: KafkaParseFn): Dataset[Payload] = {
     val df = session
