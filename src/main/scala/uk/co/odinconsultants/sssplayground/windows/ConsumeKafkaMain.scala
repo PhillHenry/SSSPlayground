@@ -16,8 +16,8 @@ object ConsumeKafkaMain {
     val topicNAme       = args(1)
     val sinkFile        = args(2)
     val processTimeMs   = args(3).toLong
-    val streams         = streamFromKafka(s, kafkaUrl, topicNAme, trivialKafkaParseFn)
-    streamingToHDFS(streams, sinkFile, processTimeMs)
+    val stream          = streamFromKafka(s, kafkaUrl, topicNAme, trivialKafkaParseFn)
+    streamingToHDFS(stream, sinkFile, processTimeMs)
     s.streams.awaitAnyTermination()
   }
 
