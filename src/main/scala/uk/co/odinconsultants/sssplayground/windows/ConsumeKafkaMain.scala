@@ -3,6 +3,7 @@ package uk.co.odinconsultants.sssplayground.windows
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery, Trigger}
 import org.apache.spark.sql.{Dataset, SparkSession}
+import uk.co.odinconsultants.sssplayground.kafka.Consuming
 
 
 object ConsumeKafkaMain {
@@ -49,14 +50,7 @@ object ConsumeKafkaMain {
   val trivialKafkaParseFn: KafkaParseFn = { case (_, v) => Some(Payload(v, (v.hashCode % 10).toString)) }
 
   def streamFromKafka(session: SparkSession, kafkaUrl: String, topicName: String, fn: KafkaParseFn): Dataset[Payload] = {
-    val df = session
-      .readStream
-      .format("kafka")
-      .option("kafka.bootstrap.servers",  kafkaUrl)
-      .option("subscribe",                topicName)
-      .option("offset",                   "earliest")
-      .option("startingOffsets",          "earliest")
-      .load()
+    val df = Consuming.streamFromKafka(session, kafkaUrl, topicName)
     import df.sqlContext.implicits._
     df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)").as[(String, String)].flatMap { case (key, value) =>
       fn(key, value)
