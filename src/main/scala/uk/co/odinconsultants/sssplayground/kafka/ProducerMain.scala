@@ -5,7 +5,6 @@ import java.util.concurrent.TimeUnit
 
 import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
 
-import scala.concurrent.Future
 import scala.util.Random
 
 object ProducerMain {
