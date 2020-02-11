@@ -11,21 +11,28 @@ import org.apache.spark.sql.streaming.{OutputMode, Trigger}
  * Project [id#32L AS id#43L, count(id)#38L AS count#44L, avg(amount)#39 AS mean#45]
  *
  * Because:
-withWatermark must be called on the same column as the timestamp column used in the aggregate.
-For example, df.withWatermark("time", "1 min").groupBy("time2").count() is invalid in Append output mode,
-as watermark is defined on a different column from the aggregation column. Simply stated, for Append you need WaterMark.
- https://stackoverflow.com/questions/54117961/spark-structured-streaming-exception-append-output-mode-not-supported-without
+ * withWatermark must be called on the same column as the timestamp column used in the aggregate.
+ * For example, df.withWatermark("time", "1 min").groupBy("time2").count() is invalid in Append output mode,
+ * as watermark is defined on a different column from the aggregation column. Simply stated, for Append you need WaterMark.
+ * https://stackoverflow.com/questions/54117961/spark-structured-streaming-exception-append-output-mode-not-supported-without
+ *
+ * val query = ds.sort('id).writeStream.format("console") .outputMode(OutputMode.Append()).start()
+ * gives:
+ *org.apache.spark.sql.AnalysisException: Sorting is not supported on streaming DataFrames/Datasets, unless it is on aggregated DataFrame/Dataset in Complete output mode;;
  */
 object StreamingMeanMain {
 
   def main(args: Array[String]): Unit = {
     val session = Init.session()
     import session.implicits._
-    val stream  = streamStringsFromKafka(session, kafkaUrl = args(0), topicName = args(1), parsingDatum).withWatermark("ts", "10 minutes")
-    val ds      = stream.groupBy('id).agg(count('id), mean('amount), current_timestamp()).toDF("id", "count", "mean", "ts").withWatermark("ts", "10 minutes")
-//    streamToHDFS(ds, sinkFile = args(2), processTimeMs = args(3).toLong).start()
+    val stream  = streamStringsFromKafka(session, kafkaUrl = args(0), topicName = args(1), parsingDatum)
+      .withWatermark("ts", "2 minutes")
+    val ds      = stream
+      .groupBy('id, window('ts, "2 minutes", "1 minutes"))
+      .agg(count('id), mean('amount))
+      .toDF("id", "ts", "count", "mean")
     val query   = ds.writeStream.format("parquet")
-      .outputMode(OutputMode.Append()) // Data source parquet does not support Complete output mode;
+      .outputMode(OutputMode.Update()) // Data source parquet does not support Complete output mode; Data source parquet does not support Update output mode;
       .option("path", args(2))
       .option("checkpointLocation", args(2) + "checkpoint")
       .trigger(Trigger.ProcessingTime(args(3).toLong))

@@ -12,7 +12,7 @@ object DatumProducerMain {
     val topicName = args(3)
 
     val payloadFn: PayloadFn = { i =>
-      val key: String   = (i % 10).toString
+      val key: String   = (i % 3).toString
       val now           = new java.util.Date()
       val value: String = s"${now.getTime}:$i"
       new ProducerRecord[String, String](topicName, key, value)
