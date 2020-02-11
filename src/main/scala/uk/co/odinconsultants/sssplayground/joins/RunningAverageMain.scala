@@ -1,9 +1,10 @@
 package uk.co.odinconsultants.sssplayground.joins
 
-import org.apache.spark.sql.{DataFrame, Dataset, Row}
+import java.sql.Timestamp
+
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery, Trigger}
-import uk.co.odinconsultants.sssplayground.kafka.Consuming.{KafkaParseFn, streamStringsFromKafka}
+import org.apache.spark.sql.{DataFrame, Dataset, Row}
+import uk.co.odinconsultants.sssplayground.kafka.Consuming._
 import uk.co.odinconsultants.sssplayground.spark.Init
 
 import scala.annotation.tailrec
@@ -11,7 +12,7 @@ import scala.annotation.tailrec
 object RunningAverageMain {
 
   case class RunningMean(id: Long, count: Long, mean: Double)
-  case class Datum(id: Long, amount: Double)
+  case class Datum(id: Long, amount: Double, ts: java.sql.Timestamp)
 
   def main(args: Array[String]): Unit = {
     val s         = Init.session()
@@ -21,7 +22,7 @@ object RunningAverageMain {
 
     @tailrec
     def sample(): Unit = {
-      val query     = streamingToHDFS(stream, sinkFile = args(2), processTimeMs = args(3).toLong)
+      val query  = streamToHDFS(stream, sinkFile = args(2), processTimeMs = args(3).toLong).start()
       Thread.sleep(pauseMS)
       query.stop()
       sample()
@@ -30,17 +31,10 @@ object RunningAverageMain {
     sample()
   }
 
-  def streamingToHDFS(df: Dataset[Datum], sinkFile: String, processTimeMs: Long): StreamingQuery = {
-    val checkpointFilename  = sinkFile + "checkpoint"
-    df.writeStream.format("parquet")
-      .outputMode(OutputMode.Append()) // Data source parquet does not support Complete output mode;
-      .option("path",               sinkFile)
-      .option("checkpointLocation", checkpointFilename)
-      .trigger(Trigger.ProcessingTime(processTimeMs))
-      .start()
+  val parsingDatum: KafkaParseFn[Datum] = { case (k, v) =>
+    val Array(tsStr, amtStr) = v.split(":")
+    Some(Datum(k.toLong, amtStr.toDouble, new Timestamp(tsStr.toLong)))
   }
-
-  val parsingDatum: KafkaParseFn[Datum] = { case (k, v) => Some(Datum(k.toLong, v.toDouble)) }
 
   def updating(stream: Dataset[RunningMean], static: Dataset[RunningMean]): Dataset[RunningMean] = {
     import stream.sparkSession.implicits._

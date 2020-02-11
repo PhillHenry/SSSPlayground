@@ -1,5 +1,6 @@
 package uk.co.odinconsultants.sssplayground.kafka
 
+import org.apache.spark.sql.streaming.{DataStreamWriter, OutputMode, Trigger}
 import org.apache.spark.sql.{DataFrame, Dataset, Encoder, SparkSession}
 
 object Consuming {
@@ -13,6 +14,16 @@ object Consuming {
       fn(key, value)
     }
   }
+
+
+  def streamToHDFS[T: Encoder](df: Dataset[T], sinkFile: String, processTimeMs: Long): DataStreamWriter[T] = {
+    df.writeStream.format("parquet")
+      .outputMode(OutputMode.Append()) // Data source parquet does not support Complete output mode;
+      .option("path", sinkFile)
+      .option("checkpointLocation", sinkFile + "checkpoint")
+      .trigger(Trigger.ProcessingTime(processTimeMs))
+  }
+
 
   def streamFromKafka(session: SparkSession, kafkaUrl: String, topicName: String): DataFrame =
     session
