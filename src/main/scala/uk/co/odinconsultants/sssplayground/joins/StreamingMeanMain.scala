@@ -31,8 +31,8 @@ object StreamingMeanMain {
       .groupBy('id, window('ts, "2 minutes", "1 minutes"))
       .agg(count('id), mean('amount))
       .toDF("id", "ts", "count", "mean")
-    val query   = ds.writeStream.format("parquet")
-      .outputMode(OutputMode.Update()) // Data source parquet does not support Complete output mode; Data source parquet does not support Update output mode;
+    val query   = stream.writeStream.format("parquet")
+      .outputMode(OutputMode.Append()) // Data source parquet does not support Complete output mode; Data source parquet does not support Update output mode;
       .option("path", args(2))
       .option("checkpointLocation", args(2) + "checkpoint")
       .trigger(Trigger.ProcessingTime(args(3).toLong))
