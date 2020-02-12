@@ -26,12 +26,12 @@ object StreamingMeanMain {
     val session = Init.session()
     import session.implicits._
     val stream  = streamStringsFromKafka(session, kafkaUrl = args(0), topicName = args(1), parsingDatum)
-      .withWatermark("ts", "2 minutes")
+      .withWatermark("ts", "1 minutes")
     val ds      = stream
-      .groupBy('id, window('ts, "2 minutes", "1 minutes"))
-      .agg(count('id), mean('amount))
-      .toDF("id", "ts", "count", "mean")
-    val query   = stream.writeStream.format("parquet")
+      .groupBy('id, window('ts, "1 minute", "1 minute"))
+      .agg('id, count('id), mean('amount))
+      .toDF("idX", "timestamp", "id", "count", "mean")
+    val query   = ds.writeStream.format("parquet")
       .outputMode(OutputMode.Append()) // Data source parquet does not support Complete output mode; Data source parquet does not support Update output mode;
       .option("path", args(2))
       .option("checkpointLocation", args(2) + "checkpoint")
