@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-master
+spec:
+  selector:
+    app: spark-master
+  ports:
+  - name: web-ui
+    protocol: TCP
+    port: 8080
+    targetPort: 8080
+  - name: master
+    protocol: TCP
+    port: 7077
+    targetPort: 7077
+  - name: master-rest
+    protocol: TCP
+    port: 6066
+    targetPort: 6066
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-master
+  labels:
+    app: spark-master
+spec:
+  selector:
+    matchLabels:
+      app: spark-master
+  template:
+    metadata:
+      labels:
+        app: spark-master
+    spec:
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+        fsGroup: 0
+      containers:
+      - name: spark-master
+        image: ph1ll1phenry/spark3.0.0-preview2_hadoop3.2.0
+        command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master", "--port", "7077", "--webui-port", "8080"]
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        - containerPort: 7077
+        - containerPort: 6066
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: spark3-executors
+spec:
+  securityContext:
+    runAsUser: 0
+    runAsGroup: 0
+    fsGroup: 0
+  containers:
+  - name: spark3-executor
+    image: ph1ll1phenry/spark3.0.0-preview2_hadoop3.2.0
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "-c", "4", "--webui-port", "8081", "spark://spark-master:7077"]
