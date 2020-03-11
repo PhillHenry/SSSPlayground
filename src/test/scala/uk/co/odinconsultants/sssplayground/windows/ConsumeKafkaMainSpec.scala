@@ -30,15 +30,15 @@ class ConsumeKafkaMainSpec extends WordSpec with Matchers {
       val s               = SparkForTesting.session
       import s.implicits._
       val stream          = streamStringsFromKafka(s, s"$hostname:$kafkaPort", topicName, trivialKafkaParseFn)
-      val processTime = 2000
-      streamingToHDFS(stream, hdfsUri + sinkFile, processTime)
+      val processTimeMs   = 2000
+      streamingToHDFS(stream, hdfsUri + sinkFile, processTimeMs)
 
       val n = 10
       sendAndWait(payloadFn, hostname, kafkaPort, n).foreach(println)
 
-      Thread.sleep(processTime * 2)
+      Thread.sleep(processTimeMs * 2)
       sendAndWait(payloadFn, hostname, kafkaPort, n).foreach(println) // APPEND seems to need more messages before it actually writes to disk...
-      Thread.sleep(processTime * 2)
+      Thread.sleep(processTimeMs * 2)
 
 
       val actualFiles = list(hdfsUri + sinkFile)
