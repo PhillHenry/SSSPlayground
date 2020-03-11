@@ -7,8 +7,9 @@ import scala.util.Random
 
 object ProducerMain {
 
+  def json(): String = Random.alphanumeric.filter(_.isLetter).take(500000).mkString
+
   def main(args: Array[String]): Unit = {
-    def json(): String = Random.alphanumeric.filter(_.isLetter).take(500000).mkString
 
     val hostname  = args(0)
     val kPort     = args(1).toInt

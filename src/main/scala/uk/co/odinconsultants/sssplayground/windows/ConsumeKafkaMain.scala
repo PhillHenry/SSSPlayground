@@ -8,11 +8,11 @@ import uk.co.odinconsultants.sssplayground.spark.Init
 object ConsumeKafkaMain {
 
   def main(args: Array[String]): Unit = {
-    val s               = Init.session()
     val kafkaUrl        = args(0)
     val topicName       = args(1)
     val sinkFile        = args(2)
     val processTimeMs   = args(3).toLong
+    val s               = Init.session()
     import s.implicits._
     val stream          = streamStringsFromKafka(s, kafkaUrl, topicName, trivialKafkaParseFn)
     streamingToHDFS(stream, sinkFile, processTimeMs)
