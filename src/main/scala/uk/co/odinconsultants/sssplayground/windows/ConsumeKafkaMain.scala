@@ -10,11 +10,11 @@ object ConsumeKafkaMain {
   def main(args: Array[String]): Unit = {
     val s               = Init.session()
     val kafkaUrl        = args(0)
-    val topicNAme       = args(1)
+    val topicName       = args(1)
     val sinkFile        = args(2)
     val processTimeMs   = args(3).toLong
     import s.implicits._
-    val stream          = streamStringsFromKafka(s, kafkaUrl, topicNAme, trivialKafkaParseFn)
+    val stream          = streamStringsFromKafka(s, kafkaUrl, topicName, trivialKafkaParseFn)
     streamingToHDFS(stream, sinkFile, processTimeMs)
     s.streams.awaitAnyTermination()
   }

@@ -17,7 +17,7 @@ object ProducerMain {
 
     val payloadFn: PayloadFn = _ => new ProducerRecord[String, String](topicName, json())
 
-    sendAndWait(payloadFn, hostname, kPort, n)
+    sendAndWait(payloadFn, hostname, kPort, n).foreach(println)
   }
 
 
