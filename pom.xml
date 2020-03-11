@@ -14,9 +14,9 @@
     <encoding>UTF-8</encoding>
     <scala.version>2.12.8</scala.version>
     <scala.compat.version>2.12</scala.compat.version>
-    <spark.version>3.0.0-preview2</spark.version>
+    <spark.version>2.4.2</spark.version>
     <kafka.version>2.3.1</kafka.version>
-    <hadoop.version>3.2.0</hadoop.version>
+    <hadoop.version>2.8.0</hadoop.version>
   </properties>
 
   <dependencies>
@@ -66,6 +66,16 @@
       <version>${kafka.version}</version>
     </dependency>
     <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+      <version>${kafka.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.zookeeper</groupId>
+      <artifactId>zookeeper</artifactId>
+      <version>3.4.7</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-minicluster</artifactId>
       <version>${hadoop.version}</version>
@@ -81,12 +91,15 @@
       <artifactId>BigDataTesting</artifactId>
       <version>1.0-SNAPSHOT</version>
     </dependency>
+    <dependency>
+      <groupId>io.delta</groupId>
+      <artifactId>delta-core_2.12</artifactId>
+      <version>0.5.0</version>
+    </dependency>
   </dependencies>
 
 
   <build>
-    <sourceDirectory>src/main/scala</sourceDirectory>
-    <testSourceDirectory>src/test/scala</testSourceDirectory>
     <plugins>
       <plugin>
         <!-- see http://davidb.github.com/scala-maven-plugin -->
@@ -110,22 +123,25 @@
         </executions>
       </plugin>
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.18.1</version>
+        <groupId>org.scalatest</groupId>
+        <artifactId>scalatest-maven-plugin</artifactId>
+        <version>2.0.0</version>
+        <!-- Note config is repeated in surefire config -->
         <configuration>
-          <useFile>false</useFile>
-          <disableXmlReport>false</disableXmlReport>
-          <forkMode>always</forkMode> <!-- Hive keeps closing down Spark contexts -->
-          <!-- If you have classpath issue like NoDefClassError,... -->
-          <!-- useManifestOnlyJar>false</useManifestOnlyJar -->
-          <includes>
-            <include>**/*Test.*</include>
-            <include>**/*Spec.*</include>
-            <include>**/*Suite.*</include>
-          </includes>
+          <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+          <junitxml>.</junitxml>
+          <stderr/>
         </configuration>
+        <executions>
+          <execution>
+            <id>test</id>
+            <goals>
+              <goal>test</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
+
       <!--
       Run with:
       mvn assembly:assembly -DdescriptorId=jar-with-dependencies

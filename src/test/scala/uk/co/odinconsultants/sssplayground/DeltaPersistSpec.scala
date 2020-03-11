@@ -1,5 +1,6 @@
 package uk.co.odinconsultants.sssplayground
 
+import org.apache.spark.sql.SparkSession
 import org.scalatest.{Matchers, WordSpec}
 import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting.hdfsUri
 import uk.co.odinconsultants.htesting.spark.SparkForTesting
@@ -9,15 +10,20 @@ class DeltaPersistSpec extends WordSpec with Matchers {
   "A typical dataframe" should {
     "be persisted as a delta frame" in {
       val s               = SparkForTesting.session
-      import s.implicits._
-      val xs: Seq[String]        = "the quick brown fox jumped over the lazy dog".split(" ")
-      val df        = s.sparkContext.parallelize(xs).toDF("values")
+
       val filename  = hdfsUri + this.getClass.getSimpleName
-      df.write.format("delta").parquet(filename)
+
+      val first: Seq[String]        = "the quick brown fox jumped over the lazy dog".split(" ")
+      deltaWrite(s, first, filename)
 
       val fromDisk = s.read.parquet(filename)
-      fromDisk.collect().map(_.mkString("")).toSet shouldBe xs.toSet
+      fromDisk.collect().map(_.mkString("")).toSet shouldBe first.toSet
     }
   }
 
+  private def deltaWrite(s: SparkSession, xs: Seq[String], filename: String): Unit = {
+    import s.implicits._
+    val df = s.sparkContext.parallelize(xs).toDF("values")
+    df.write.format("delta").mode("overwrite").save(filename)
+  }
 }
