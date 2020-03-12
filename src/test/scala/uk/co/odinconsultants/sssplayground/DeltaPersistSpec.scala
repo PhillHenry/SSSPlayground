@@ -2,7 +2,7 @@ package uk.co.odinconsultants.sssplayground
 
 import org.apache.spark.sql.SparkSession
 import org.scalatest.{Matchers, WordSpec}
-import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting.hdfsUri
+import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting.{hdfsUri, list}
 import uk.co.odinconsultants.htesting.spark.SparkForTesting
 
 class DeltaPersistSpec extends WordSpec with Matchers {
@@ -18,6 +18,9 @@ class DeltaPersistSpec extends WordSpec with Matchers {
 
       val fromDisk = s.read.parquet(filename)
       fromDisk.collect().map(_.mkString("")).toSet shouldBe first.toSet
+
+      val actualFiles = list(filename)
+      info(s"Files in $filename:\n${actualFiles.mkString("\n")}")
     }
   }
 

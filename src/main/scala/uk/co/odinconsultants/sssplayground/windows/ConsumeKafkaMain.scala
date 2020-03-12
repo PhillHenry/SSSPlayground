@@ -25,7 +25,7 @@ object ConsumeKafkaMain {
 
   def streamingToHDFS(df: Dataset[Payload], sinkFile: String, processTimeMs: Long): StreamingQuery = {
     val checkpointFilename  = sinkFile + "checkpoint"
-    df.writeStream.format("parquet")
+    df.writeStream.format("delta")
       .outputMode(OutputMode.Append()) // Data source parquet does not support Complete output mode;
       .option("path",               sinkFile)
       .option("checkpointLocation", checkpointFilename)
