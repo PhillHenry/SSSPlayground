@@ -4,6 +4,7 @@ import org.apache.spark.sql.SparkSession
 import org.scalatest.{Matchers, WordSpec}
 import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting.{hdfsUri, list}
 import uk.co.odinconsultants.htesting.spark.SparkForTesting
+import org.apache.spark.sql.SaveMode
 
 class DeltaPersistSpec extends WordSpec with Matchers {
 
@@ -40,7 +41,7 @@ class DeltaPersistSpec extends WordSpec with Matchers {
   private def deltaWrite(s: SparkSession, xs: Seq[MyRow], filename: String): Unit = {
     import s.implicits._
     val df = s.sparkContext.parallelize(xs).toDF
-    df.write.format("delta").mode("overwrite").save(filename)
+    df.write.format("delta").mode(SaveMode.Overwrite).save(filename)
   }
 }
 
