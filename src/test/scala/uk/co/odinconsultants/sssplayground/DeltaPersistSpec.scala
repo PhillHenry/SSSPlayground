@@ -25,13 +25,12 @@ class DeltaPersistSpec extends WordSpec with Matchers {
       val written2: Array[MyRow]  = writeBatch(filename, write2)
       written2 should have size (words.size * 2)
     }
-    "be updated like a SQL table" ignore {
+    "be updated like a SQL table" in {
       import org.apache.spark.sql.functions._
-      import session.implicits._
       val deltaTable  = DeltaTable.forPath(filename)
       val newWord     = "wotcha"
       deltaTable.update(col("value") === id1, Map("word" -> lit(newWord)))
-      val actual: Array[MyRow] = session.read.parquet(filename).as[MyRow].collect()
+      val actual: Array[MyRow] = read(filename)
       actual should have size (words.size * 2)
       withClue(s"Actual:\n${actual.mkString("\n")}") {
         actual.filter(_.word == newWord) should have size words.length
@@ -40,17 +39,20 @@ class DeltaPersistSpec extends WordSpec with Matchers {
   }
 
   private def writeBatch(filename: String, rows: Seq[MyRow]): Array[MyRow] = {
-    import session.implicits._
-
     deltaWrite(rows, filename)
-    val fromDisk = session.read.parquet(filename).as[MyRow]
+    read(filename)
+  }
+
+  private def read(filename: String): Array[MyRow] = {
+    import session.implicits._
+    val fromDisk = session.read.format("delta").load(filename).as[MyRow]
     fromDisk.collect()
   }
 
   private def deltaWrite(xs: Seq[MyRow], filename: String): Unit = {
     import session.implicits._
     val df = session.sparkContext.parallelize(xs).toDF
-    df.write.format("delta").mode(SaveMode.Overwrite).save(filename)
+    df.write.format("delta").mode(SaveMode.Append).save(filename)
   }
 }
 
