@@ -16,15 +16,25 @@ class DeltaPersistSpec extends WordSpec with Matchers {
       val filename  = hdfsUri + this.getClass.getSimpleName
 
       val words: Seq[String]        = "the quick brown fox jumped over the lazy dog".split(" ")
-      val firstRows: Seq[MyRow] = words.map(x => MyRow(x, 1))
-      deltaWrite(s, firstRows, filename)
+      writeFirstBatch(s, filename, words)
 
+      info(s"Files after first bacth in $filename:\n${list(filename).mkString("\n")}")
+
+      val secondRows: Seq[MyRow] = words.map(x => MyRow(x, 2))
+      deltaWrite(s, secondRows, filename)
       val fromDisk = s.read.parquet(filename).as[MyRow]
-      fromDisk.collect().toSet shouldBe firstRows.toSet
 
-      val actualFiles = list(filename)
-      info(s"Files in $filename:\n${actualFiles.mkString("\n")}")
+      info(s"Files after second batch in $filename:\n${list(filename).mkString("\n")}")
+      fromDisk.collect should have size (words.size * 2)
     }
+  }
+
+  private def writeFirstBatch(s: SparkSession, filename: String, words: Seq[String]): Unit = {
+    import s.implicits._
+    val firstRows: Seq[MyRow] = words.map(x => MyRow(x, 1))
+    deltaWrite(s, firstRows, filename)
+    val fromDisk = s.read.parquet(filename).as[MyRow]
+    fromDisk.collect().toSet shouldBe firstRows.toSet
   }
 
   private def deltaWrite(s: SparkSession, xs: Seq[MyRow], filename: String): Unit = {
