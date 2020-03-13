@@ -1,10 +1,11 @@
 package uk.co.odinconsultants.sssplayground
 
 import io.delta.tables._
+import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.SaveMode
 import org.apache.spark.sql.functions._
 import org.scalatest.{Matchers, WordSpec}
-import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting.hdfsUri
+import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting.{hdfsUri, list}
 import uk.co.odinconsultants.htesting.spark.SparkForTesting.session
 
 class DeltaPersistSpec extends WordSpec with Matchers {
@@ -37,10 +38,28 @@ class DeltaPersistSpec extends WordSpec with Matchers {
       val deltaTable  = DeltaTable.forPath(filename)
       val newWord     = "wotcha"
       deltaTable.update(col("value") === id1, Map("word" -> lit(newWord)))
+
       val state: Array[MyRow] = read(filename)
-      state should have size words.size
       withClue(s"Actual:\n${state.mkString("\n")}") {
+        state should have size words.size
         state.filter(_.word == newWord) should have size words.length
+      }
+    }
+    "have its files cleaned up when vacuumed" in {
+      val before: List[Path] = list(filename)
+      info(s"Before:\n${before.mkString("\n")}")
+
+      session.sessionState.conf.setConfString("spark.databricks.delta.retentionDurationCheck.enabled", "false")
+      val deltaTable  = DeltaTable.forPath(session, filename)
+
+      // spark.databricks.delta.retentionDurationCheck.enabled = false
+
+      deltaTable.vacuum(0)
+
+      val after: List[Path] = list(filename)
+      info(s"After:\n${after.mkString("\n")}")
+      withClue(s"Before:\n${before.mkString("\n")}\nAfter:\n${after.mkString("\n")}") {
+        after.size should be < (before.size)
       }
     }
   }
