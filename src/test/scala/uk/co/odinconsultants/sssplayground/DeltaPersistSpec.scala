@@ -5,13 +5,14 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.SaveMode
 import org.apache.spark.sql.functions._
 import org.scalatest.{Matchers, WordSpec}
-import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting.{hdfsUri, list}
+import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting._
 import uk.co.odinconsultants.htesting.spark.SparkForTesting.session
+
+import scala.collection.mutable.ArrayBuffer
 
 class DeltaPersistSpec extends WordSpec with Matchers {
 
   import DeltaPersistSpec._
-
 
   "A typical dataframe" should {
     val filename                = hdfsUri + this.getClass.getSimpleName
@@ -21,11 +22,13 @@ class DeltaPersistSpec extends WordSpec with Matchers {
       val toWrite:  Seq[MyRow]    = words.map(x => MyRow(x, id1))
       val state:    Array[MyRow]  = writeBatch(filename, toWrite, SaveMode.Append)
       state.toSet shouldBe toWrite.toSet
+      printJsonFiles(filename)
     }
     "be appended" in {
       val toWrite:  Seq[MyRow]    = words.map(x => MyRow(x, 2))
       val state:    Array[MyRow]  = writeBatch(filename, toWrite, SaveMode.Append)
       state should have size (words.size * 2)
+      printJsonFiles(filename)
     }
     "be updated like a DataFrame" in {
       val toWrite:  Seq[MyRow]    = words.map(x => MyRow(x, id1))
@@ -33,6 +36,7 @@ class DeltaPersistSpec extends WordSpec with Matchers {
       withClue(s"Actual:\n${state.mkString("\n")}") {
         state should have size words.size
       }
+      printJsonFiles(filename)
     }
     "be updated like a SQL table" in {
       val deltaTable  = DeltaTable.forPath(filename)
@@ -44,9 +48,14 @@ class DeltaPersistSpec extends WordSpec with Matchers {
         state should have size words.size
         state.filter(_.word == newWord) should have size words.length
       }
+      printJsonFiles(filename)
     }
-    "have its files cleaned up when vacuumed" in {
-      val before: List[Path] = list(filename)
+
+    val before: ArrayBuffer[Path] = ArrayBuffer.empty
+
+
+    "have its Parquet files coalesced when vacuumed" in {
+      before.append(list(filename).toArray: _*)
       info(s"Before:\n${before.mkString("\n")}")
 
       session.sessionState.conf.setConfString("spark.databricks.delta.retentionDurationCheck.enabled", "false")
@@ -61,7 +70,23 @@ class DeltaPersistSpec extends WordSpec with Matchers {
       withClue(s"Before:\n${before.mkString("\n")}\nAfter:\n${after.mkString("\n")}") {
         after.size should be < (before.size)
       }
+      printJsonFiles(filename)
     }
+
+    "but its JSON files stay the same" in {
+      val isJsonFile: Path => Boolean = _.toString.endsWith(".json")
+      val beforeJson: List[Path]      = before.toList.filter(isJsonFile)
+      val afterJson:  List[Path]      = list(filename).filter(isJsonFile)
+      withClue(s"Before:\n${before.mkString("\n")}\nAfter:\n${afterJson.mkString("\n")}") {
+        beforeJson.size shouldEqual afterJson.size
+      }
+    }
+  }
+
+  def printJsonFiles(dir: String): Unit = {
+    val files = list(dir).filter(_.toString.endsWith(".json"))
+    info(s"JSON files: ${files.mkString(", ")}")
+    for (file <- files) yield info(s"JSON: $file:\n${readAsString(file.toString)}")
   }
 
   private def writeBatch(filename: String, rows: Seq[MyRow], saveMode: SaveMode): Array[MyRow] = {
