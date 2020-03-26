@@ -1,10 +1,5 @@
 package uk.co.odinconsultants.sssplayground
 
-import java.io.{File, FileOutputStream}
-
-import com.fasterxml.jackson.core.JsonParser
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import io.delta.tables._
 import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.SaveMode
@@ -14,9 +9,8 @@ import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting._
 import uk.co.odinconsultants.htesting.spark.SparkForTesting.session
 
 import scala.collection.mutable.ArrayBuffer
-import scala.util.Try
 
-class DeltaPersistSpec extends WordSpec with Matchers {
+class DeltaPersistSpec extends WordSpec with Matchers with LoggingToLocalFS {
 
   import DeltaPersistSpec._
 
@@ -66,8 +60,6 @@ class DeltaPersistSpec extends WordSpec with Matchers {
       session.sessionState.conf.setConfString("spark.databricks.delta.retentionDurationCheck.enabled", "false")
       val deltaTable  = DeltaTable.forPath(session, filename)
 
-      // spark.databricks.delta.retentionDurationCheck.enabled = false
-
       deltaTable.vacuum(0)
 
       val after: List[Path] = list(filename)
@@ -88,26 +80,8 @@ class DeltaPersistSpec extends WordSpec with Matchers {
     }
   }
 
-  def logToDisk(f2j: Map[String, String], dir: String): Unit = Try {
-      val fqn = s"/tmp/${this.getClass.getSimpleName}/$dir/"
-      new File(fqn).mkdirs()
-      f2j.foreach { case (file, jsonString) =>
-        val fileName  = file.substring(file.lastIndexOf("/"))
-        val f         = new File(fqn + fileName)
-        val fos       = new FileOutputStream(f)
-        fos.write(jsonString.getBytes)
-        fos.flush()
-        fos.close()
-      }
-    }
 
-  def readJsonFiles(dir: String): Map[String, String] = {
-    val files = list(dir).filter(_.toString.endsWith(".json"))
-    info(s"JSON files: ${files.mkString(", ")}")
-    files.map { f =>
-      f.toString -> readAsString(f.toString)
-    }.toMap
-  }
+  def readJsonFiles(dir: String): Map[String, String] = TestingHdfsUtils.readFileFrom(dir, ".json")
 
   private def writeBatch(filename: String, rows: Seq[MyRow], saveMode: SaveMode): Array[MyRow] = {
     deltaWrite(rows, filename, saveMode)
