@@ -1,5 +1,10 @@
 package uk.co.odinconsultants.sssplayground
 
+import java.io.{File, FileOutputStream}
+
+import com.fasterxml.jackson.core.JsonParser
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import io.delta.tables._
 import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.SaveMode
@@ -9,6 +14,7 @@ import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting._
 import uk.co.odinconsultants.htesting.spark.SparkForTesting.session
 
 import scala.collection.mutable.ArrayBuffer
+import scala.util.Try
 
 class DeltaPersistSpec extends WordSpec with Matchers {
 
@@ -22,13 +28,13 @@ class DeltaPersistSpec extends WordSpec with Matchers {
       val toWrite:  Seq[MyRow]    = words.map(x => MyRow(x, id1))
       val state:    Array[MyRow]  = writeBatch(filename, toWrite, SaveMode.Append)
       state.toSet shouldBe toWrite.toSet
-      printJsonFiles(filename)
+      logToDisk(readJsonFiles(filename), "1write")
     }
     "be appended" in {
       val toWrite:  Seq[MyRow]    = words.map(x => MyRow(x, 2))
       val state:    Array[MyRow]  = writeBatch(filename, toWrite, SaveMode.Append)
       state should have size (words.size * 2)
-      printJsonFiles(filename)
+      logToDisk(readJsonFiles(filename), "2write")
     }
     "be updated like a DataFrame" in {
       val toWrite:  Seq[MyRow]    = words.map(x => MyRow(x, id1))
@@ -36,7 +42,7 @@ class DeltaPersistSpec extends WordSpec with Matchers {
       withClue(s"Actual:\n${state.mkString("\n")}") {
         state should have size words.size
       }
-      printJsonFiles(filename)
+      logToDisk(readJsonFiles(filename), "3overwrite")
     }
     "be updated like a SQL table" in {
       val deltaTable  = DeltaTable.forPath(filename)
@@ -48,11 +54,10 @@ class DeltaPersistSpec extends WordSpec with Matchers {
         state should have size words.size
         state.filter(_.word == newWord) should have size words.length
       }
-      printJsonFiles(filename)
+      logToDisk(readJsonFiles(filename), "4sql_update")
     }
 
     val before: ArrayBuffer[Path] = ArrayBuffer.empty
-
 
     "have its Parquet files coalesced when vacuumed" in {
       before.append(list(filename).toArray: _*)
@@ -70,7 +75,7 @@ class DeltaPersistSpec extends WordSpec with Matchers {
       withClue(s"Before:\n${before.mkString("\n")}\nAfter:\n${after.mkString("\n")}") {
         after.size should be < (before.size)
       }
-      printJsonFiles(filename)
+      logToDisk(readJsonFiles(filename), "5after_vacuum")
     }
 
     "but its JSON files stay the same" in {
@@ -83,10 +88,25 @@ class DeltaPersistSpec extends WordSpec with Matchers {
     }
   }
 
-  def printJsonFiles(dir: String): Unit = {
+  def logToDisk(f2j: Map[String, String], dir: String): Unit = Try {
+      val fqn = s"/tmp/${this.getClass.getSimpleName}/$dir/"
+      new File(fqn).mkdirs()
+      f2j.foreach { case (file, jsonString) =>
+        val fileName  = file.substring(file.lastIndexOf("/"))
+        val f         = new File(fqn + fileName)
+        val fos       = new FileOutputStream(f)
+        fos.write(jsonString.getBytes)
+        fos.flush()
+        fos.close()
+      }
+    }
+
+  def readJsonFiles(dir: String): Map[String, String] = {
     val files = list(dir).filter(_.toString.endsWith(".json"))
     info(s"JSON files: ${files.mkString(", ")}")
-    for (file <- files) yield info(s"JSON: $file:\n${readAsString(file.toString)}")
+    files.map { f =>
+      f.toString -> readAsString(f.toString)
+    }.toMap
   }
 
   private def writeBatch(filename: String, rows: Seq[MyRow], saveMode: SaveMode): Array[MyRow] = {
