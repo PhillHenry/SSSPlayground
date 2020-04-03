@@ -2,11 +2,10 @@ package uk.co.odinconsultants.sssplayground.windows
 
 import java.sql.Timestamp
 import java.text.{ParsePosition, SimpleDateFormat}
-import java.util.Date
 
 import scala.annotation.tailrec
 
-trait TimestampedDataFixture {
+object TimestampedDataFixture {
 
   val dateFormat        = "yyyy-MM-dd'T'HH:mm:ssZZZZ"
   private val formatter = new SimpleDateFormat(dateFormat)
@@ -28,5 +27,12 @@ trait TimestampedDataFixture {
     timestamps(List.empty, n)
   }
 
+  val nKeys = 7
+  val nIds  = 11
+
+  def timestampedData(n: Int): List[(Timestamp, Int, Int)] = {
+    val times = generateTimestamps(n, midnight30Dec2019UTC, midnight11Feb2020UTC)
+    times.zipWithIndex.map { case (ts, i) => (ts, i % nKeys, i % nIds)}
+  }
 
 }
