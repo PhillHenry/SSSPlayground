@@ -11,6 +11,7 @@ object TimestampedDataFixture {
   private val formatter = new SimpleDateFormat(dateFormat)
 
   val midnight30Dec2019UTC: Timestamp = new Timestamp(formatter.parse("2019-12-30T00:00:00UTC", new ParsePosition(0)).getTime)
+  val midnight13Jan2020UTC: Timestamp = new Timestamp(formatter.parse("2020-01-13T00:00:00UTC", new ParsePosition(0)).getTime)
   val midnight11Feb2020UTC: Timestamp = new Timestamp(formatter.parse("2020-02-11T00:00:00UTC", new ParsePosition(0)).getTime)
 
   def generateTimestamps(n: Int, startInc: Timestamp, endExcl: Timestamp): List[Timestamp] = {
@@ -30,9 +31,9 @@ object TimestampedDataFixture {
   val nKeys = 7
   val nIds  = 11
 
-  def timestampedData(n: Int): List[(Timestamp, Int, Int)] = {
+  def timestampedData(n: Int, nKeys: Int = nKeys, nIds: Int = nIds): List[(Int, Timestamp, Int, Int)] = {
     val times = generateTimestamps(n, midnight30Dec2019UTC, midnight11Feb2020UTC)
-    times.zipWithIndex.map { case (ts, i) => (ts, i % nKeys, i % nIds)}
+    times.zipWithIndex.map { case (ts, i) => (i, ts, i % nKeys, i % nIds)}
   }
 
 }
