@@ -27,7 +27,8 @@ class DecryptStreamSpec extends WordSpec with Matchers {
         val privateKeyStream: BufferedInputStream   = new BufferedInputStream(new FileInputStream(pkFile))
         PGPDecryptor.decryptFile(inputStream, privateKeyStream, "thisisatest".toCharArray)
       }
-      println("decoded message = " + decodedRDD.collect().mkString("\n"))
+      val result = decodedRDD.collect()
+      result(0) shouldBe "Well done! You've cracked the code!\n"
     }
   }
 
