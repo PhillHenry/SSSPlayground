@@ -13,29 +13,38 @@ import uk.co.odinconsultants.htesting.spark.SparkForTesting.session
 
 class DecryptStreamSpec extends WordSpec with Matchers {
 
+  import DecryptStreamSpec._
+
   "Binary file in HDFS" should {
-    "be decrypted" in {
+    val expected  = "Well done! You've cracked the code!\n"
+    val from      = testResourceFQN("text.gpg")
+    val to        = hdfsUri + this.getClass.getSimpleName
+    "be decrypted by Spark" in {
       Security.addProvider(new BouncyCastleProvider)
 
-      val from  = DecryptStreamSpec.testResourceFQN("text.gpg")
-      val to    = hdfsUri + this.getClass.getSimpleName
       HdfsForTesting.distributedFS.copyFromLocalFile(new Path(from), new Path(to))
 
-      val decodedRDD = session.sparkContext.binaryFiles(to).map { case (file, stream) =>
+      val decodedRDD = session.sparkContext.binaryFiles(to).map { case (_, stream) =>
         val inputStream:      DataInputStream       = stream.open()
-        val pkFile:           String                = DecryptStreamSpec.testResourceFQN("alice_privKey.txt").substring(5)
-        val privateKeyStream: BufferedInputStream   = new BufferedInputStream(new FileInputStream(pkFile))
-        PGPDecryptor.decryptFile(inputStream, privateKeyStream, "thisisatest".toCharArray)
+        PGPDecryptor.decryptFile(inputStream, pkInputStream(), "thisisatest".toCharArray)
       }
       val result = decodedRDD.collect()
-      result(0) shouldBe "Well done! You've cracked the code!\n"
+      result(0) shouldBe expected
+    }
+    "be decrypted using Hadoop's API" in {
+      val is        = HdfsForTesting.distributedFS.open(new Path(to), 1024)
+      val decrypted = PGPDecryptor.decryptFile(is, pkInputStream(), "thisisatest".toCharArray)
+      decrypted shouldBe expected
     }
   }
-
-
 }
 
 object DecryptStreamSpec {
+
+  def pkInputStream(): BufferedInputStream = {
+    val pkFile: String = DecryptStreamSpec.testResourceFQN("alice_privKey.txt").substring(5)
+    new BufferedInputStream(new FileInputStream(pkFile))
+  }
 
   def testResourceFQN(filename: String): String = {
     val tld = this.getClass.getResource(separator)
