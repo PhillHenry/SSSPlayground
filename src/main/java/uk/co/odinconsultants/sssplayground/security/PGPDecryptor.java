@@ -16,14 +16,14 @@ import java.util.Iterator;
  */
 public class PGPDecryptor {
 
-    public static String decryptFile(
-            InputStream in,
-            InputStream keyIn,
-            char[]      passwd)
+    public static void decrypt(
+            InputStream     in,
+            InputStream     keyIn,
+            char[]          passwd,
+            OutputStream    out)
             throws IOException, NoSuchProviderException
     {
         in = PGPUtil.getDecoderStream(in);
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
         try
         {
@@ -80,7 +80,7 @@ public class PGPDecryptor {
                 PGPLiteralData ld = (PGPLiteralData)message;
 
                 InputStream unc = ld.getInputStream();
-                OutputStream fOut =  new BufferedOutputStream(baos);
+                OutputStream fOut =  new BufferedOutputStream(out);
 
                 Streams.pipeAll(unc, fOut);
 
@@ -120,7 +120,6 @@ public class PGPDecryptor {
             }
         }
 
-        return new String(baos.toByteArray());
     }
 
     static PGPPrivateKey findSecretKey(PGPSecretKeyRingCollection pgpSec, long keyID, char[] pass)

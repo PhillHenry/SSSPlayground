@@ -1,6 +1,6 @@
 package uk.co.odinconsultants.sssplayground.security
 
-import java.io.{BufferedInputStream, ByteArrayInputStream, DataInputStream, FileInputStream}
+import java.io.{BufferedInputStream, ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, FileInputStream, InputStream}
 import java.io.File.separator
 import java.security.Security
 
@@ -26,20 +26,28 @@ class DecryptStreamSpec extends WordSpec with Matchers {
 
       val decodedRDD = session.sparkContext.binaryFiles(to).map { case (_, stream) =>
         val inputStream:      DataInputStream       = stream.open()
-        PGPDecryptor.decryptFile(inputStream, pkInputStream(), "thisisatest".toCharArray)
+        decrypt(inputStream, pkInputStream(), "thisisatest".toCharArray)
       }
       val result = decodedRDD.collect()
       result(0) shouldBe expected
     }
     "be decrypted using Hadoop's API" in {
       val is        = HdfsForTesting.distributedFS.open(new Path(to), 1024)
-      val decrypted = PGPDecryptor.decryptFile(is, pkInputStream(), "thisisatest".toCharArray)
+      val decrypted = decrypt(is, pkInputStream(), "thisisatest".toCharArray)
       decrypted shouldBe expected
     }
   }
 }
 
 object DecryptStreamSpec {
+
+  def decrypt(in: InputStream, keyIn: InputStream, passwd: Array[Char]): String = {
+    val baos    = new ByteArrayOutputStream
+    PGPDecryptor.decrypt(in, keyIn, passwd, baos)
+    val result  = new String(baos.toByteArray)
+    baos.close()
+    result
+  }
 
   def pkInputStream(): BufferedInputStream = {
     val pkFile: String = DecryptStreamSpec.testResourceFQN("alice_privKey.txt").substring(5)
