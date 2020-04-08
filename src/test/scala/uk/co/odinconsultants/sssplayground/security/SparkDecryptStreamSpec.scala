@@ -2,7 +2,6 @@ package uk.co.odinconsultants.sssplayground.security
 
 import java.io._
 import java.security.Security
-import java.util.zip.{ZipEntry, ZipInputStream}
 
 import org.apache.hadoop.fs.Path
 import org.apache.spark.input.PortableDataStream
@@ -12,8 +11,6 @@ import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting
 import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting.hdfsUri
 import uk.co.odinconsultants.htesting.spark.SparkForTesting.session
 import uk.co.odinconsultants.sssplayground.TestResources._
-
-import scala.annotation.tailrec
 
 class SparkDecryptStreamSpec extends WordSpec with Matchers {
 
@@ -28,7 +25,7 @@ class SparkDecryptStreamSpec extends WordSpec with Matchers {
       HdfsForTesting.distributedFS.copyFromLocalFile(new Path(testResourceFQN("text.gpg")), new Path(to))
       sparkDecryption(decryptingFn, to) shouldBe EncryptedFileContents
     }
-    "be unzipped and decrypted by Spark" ignore {
+    "be unzipped and decrypted by Spark" in {
       val toZipFile        = randomFilename()
 
       HdfsForTesting.distributedFS.copyFromLocalFile(new Path(ZippedEncryptedFileFQN), new Path(toZipFile))
@@ -52,18 +49,9 @@ object SparkDecryptStreamSpec {
 
   def unzippingFn(f: String, stream: PortableDataStream): String = {
     val s: DataInputStream = stream.open()
-    val zipStream = new ZipInputStream(s)
-
-    @tailrec
-    def read(entry: ZipEntry, acc: String): String = {
-      println("PH acc = " + acc)
-      if (entry != null) {
-        read(zipStream.getNextEntry, acc + decrypt(zipStream, pkInputStream(), PassPhrase))
-      } else {
-        acc
-      }
-    }
-    read(zipStream.getNextEntry, "")
+    val baos = new ByteArrayOutputStream()
+    DecryptStream.unzipping(pkInputStream(), PassPhrase, _ => baos, s)
+    new String(baos.toByteArray)
   }
 
   def sparkDecryption(binaryReadingFn: BinaryFilesFn, to: String): String = {
