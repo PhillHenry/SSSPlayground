@@ -12,6 +12,8 @@ import org.scalatest.{Matchers, WordSpec}
 import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting
 import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting.hdfsUri
 import uk.co.odinconsultants.htesting.spark.SparkForTesting.session
+import uk.co.odinconsultants.sssplayground.TestResources
+import uk.co.odinconsultants.sssplayground.TestResources.testResourceFQN
 
 import scala.annotation.tailrec
 
@@ -26,18 +28,12 @@ class DecryptStreamSpec extends WordSpec with Matchers {
     Security.addProvider(new BouncyCastleProvider)
     "be decrypted by Spark" in {
       HdfsForTesting.distributedFS.copyFromLocalFile(new Path(testResourceFQN("text.gpg")), new Path(to))
-
-      val decodedRDD = session.sparkContext.binaryFiles(to).map { case (_, stream) =>
-        decrypt(stream.open(), pkInputStream(), "thisisatest".toCharArray)
-      }
-      val result = decodedRDD.collect()
-      result(0) shouldBe expected
+      sparkDecryption(decryptingFn, to) shouldBe expected
     }
     "be unzipped and decrypted by Spark" ignore {
       val toZipFile        = randomFilename()
       HdfsForTesting.distributedFS.copyFromLocalFile(new Path(testResourceFQN("text.gpg.zip")), new Path(toZipFile))
-
-      decryptAndCheck(fn, toZipFile) shouldBe expected
+      sparkDecryption(unzippingFn, toZipFile) shouldBe expected
     }
     "be decrypted using Hadoop's API" in {
       val is        = HdfsForTesting.distributedFS.open(new Path(to), 1024)
@@ -49,13 +45,15 @@ class DecryptStreamSpec extends WordSpec with Matchers {
 
 object DecryptStreamSpec {
 
-  import DecryptStream._
-
   type BinaryFilesFn = (String, PortableDataStream) => String
 
   val expected  = "Well done! You've cracked the code!\n"
 
-  def fn(f: String, stream: PortableDataStream): String = {
+  def decryptingFn(f: String, stream: PortableDataStream): String = {
+    decrypt(stream.open(), pkInputStream(), "thisisatest".toCharArray)
+  }
+
+  def unzippingFn(f: String, stream: PortableDataStream): String = {
     val s: DataInputStream = stream.open()
     val zipStream = new ZipInputStream(s)
 
@@ -71,9 +69,9 @@ object DecryptStreamSpec {
     read(zipStream.getNextEntry, "")
   }
 
-  def decryptAndCheck(fn: BinaryFilesFn, to: String): Unit = {
+  def sparkDecryption(binaryReadingFn: BinaryFilesFn, to: String): String = {
     val decodedRDD = session.sparkContext.binaryFiles(to).map { case (f, stream) =>
-      fn(f, stream)
+      binaryReadingFn(f, stream)
     }
     val result = decodedRDD.collect()
     result(0)
@@ -88,13 +86,9 @@ object DecryptStreamSpec {
   }
 
   def pkInputStream(): BufferedInputStream = {
-    val pkFile: String = DecryptStreamSpec.testResourceFQN("alice_privKey.txt").substring(5)
+    val pkFile: String = testResourceFQN("alice_privKey.txt").substring(5)
     new BufferedInputStream(new FileInputStream(pkFile))
   }
 
-  def testResourceFQN(filename: String): String = {
-    val tld = this.getClass.getResource(separator)
-    s"${tld}..${separator}..${separator}src${separator}test${separator}resources${separator}$filename"
-  }
 
 }
