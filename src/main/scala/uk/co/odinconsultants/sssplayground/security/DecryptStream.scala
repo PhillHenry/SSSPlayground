@@ -10,16 +10,15 @@ import scala.annotation.tailrec
 object DecryptStream {
 
   def unzipping(pkInputStream:  InputStream,
-                pass:           String,
+                pass:           Array[Char],
                 out:            OutputStream,
-                stream:         PortableDataStream): Unit = {
-    val s: DataInputStream = stream.open()
+                s:              InputStream): Unit = {
     val zipStream = new ZipInputStream(s)
 
     @tailrec
     def read(entry: ZipEntry): Unit = {
       if (entry != null) {
-        PGPDecryptor.decrypt(zipStream, pkInputStream, pass.toCharArray, out)
+        PGPDecryptor.decrypt(zipStream, pkInputStream, pass, out)
         read(zipStream.getNextEntry)
       }
     }

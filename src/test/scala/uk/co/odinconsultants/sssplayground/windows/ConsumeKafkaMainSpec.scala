@@ -25,11 +25,11 @@ class ConsumeKafkaMainSpec extends WordSpec with Matchers with LoggingToLocalFS 
 
       val n = 10
       sendAndWait(payloadFn, hostname, kafkaPort, n).foreach(println)
-      Thread.sleep(processTimeMs * 2)
+      Thread.sleep(processTimeMs * 3)
       logToDisk(TestingHdfsUtils.readFileFrom(hdfsDir, ".json"), "0")
 
       sendAndWait(payloadFn, hostname, kafkaPort, n).foreach(println) // APPEND seems to need more messages before it actually writes to disk...
-      Thread.sleep(processTimeMs * 2)
+      Thread.sleep(processTimeMs * 3)
       logToDisk(TestingHdfsUtils.readFileFrom(hdfsDir, ".json"), "1")
 
       val actualFiles = list(hdfsDir)

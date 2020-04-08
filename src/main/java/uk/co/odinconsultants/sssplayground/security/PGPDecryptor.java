@@ -1,5 +1,6 @@
 package uk.co.odinconsultants.sssplayground.security;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openpgp.*;
 import org.bouncycastle.openpgp.jcajce.JcaPGPObjectFactory;
 import org.bouncycastle.openpgp.operator.jcajce.JcaKeyFingerprintCalculator;
@@ -9,12 +10,17 @@ import org.bouncycastle.util.io.Streams;
 
 import java.io.*;
 import java.security.NoSuchProviderException;
+import java.security.Security;
 import java.util.Iterator;
 
 /**
  * Largely taken from org.bouncycastle.openpgp.examples.KeyBasedLargeFileProcessor
  */
 public class PGPDecryptor {
+
+    static {
+        Security.addProvider(new BouncyCastleProvider());
+    }
 
     public static void decrypt(
             InputStream     in,
