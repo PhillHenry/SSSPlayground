@@ -22,5 +22,6 @@ object TestResources {
   def inputStreamFrom(filename: String): BufferedInputStream = new BufferedInputStream(new FileInputStream(filename))
 
   val ZippedEncryptedFilename = "text.gpg.zip"
+  val ZippedEncrypted2FilesFilename = "text2.gpg.zip"
   val ZippedEncryptedFileFQN: String = testResourceFQN(ZippedEncryptedFilename)
 }
