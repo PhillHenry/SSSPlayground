@@ -23,27 +23,25 @@ class DecryptStreamSpec extends WordSpec with Matchers {
       val baos1 = new ByteArrayOutputStream()
       val baos2 = new ByteArrayOutputStream()
       val nameToOutFn: NameTo[ByteArrayOutputStream] = nameToOut(baos1, baos2, _)
-      val pkIn: BufferedInputStream = pkInputStream()
-      unzipping(pkIn, PassPhrase, nameToOutFn, in)
-      val result  = new String(baos1.toByteArray)
-      baos1.close()
-      baos2.close()
-      pkIn.close()
-      result shouldBe EncryptedFileContents
+      unzipping(pkInputStream(), PassPhrase, nameToOutFn, in)
+      readAndCheck(baos1, EncryptedFileContents)
+      readAndCheck(baos2, EncryptedFileContents2)
     }
     "be decrypted" in {
       val in: BufferedInputStream = inputStreamFrom(filenameOf(ZippedEncryptedFilename))
       val baos1 = new ByteArrayOutputStream()
       val baos2 = new ByteArrayOutputStream()
       val nameToOutFn: NameTo[ByteArrayOutputStream] = nameToOut(baos1, baos2, _)
-      val pkIn: BufferedInputStream = pkInputStream()
-      unzipping(pkIn, PassPhrase, nameToOutFn, in)
-      val result  = new String(baos1.toByteArray)
-      baos1.close()
-      baos2.close()
-      pkIn.close()
-      result shouldBe EncryptedFileContents
+      unzipping(pkInputStream(), PassPhrase, nameToOutFn, in)
+      readAndCheck(baos1, EncryptedFileContents)
     }
+  }
+
+  def readAndCheck(baos: ByteArrayOutputStream, expected: String): Unit = {
+    val result  = new String(baos.toByteArray)
+    baos.close()
+    baos.close()
+    result shouldBe expected
   }
 
   "An input stream" should {

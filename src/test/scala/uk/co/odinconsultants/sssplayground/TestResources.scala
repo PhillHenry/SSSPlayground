@@ -5,7 +5,8 @@ import java.io.{BufferedInputStream, FileInputStream, InputStream}
 
 object TestResources {
 
-  val EncryptedFileContents  = "Well done! You've cracked the code!\n"
+  val EncryptedFileContents   = "Well done! You've cracked the code!\n"
+  val EncryptedFileContents2  = "And this too!"
 
   val PassPhrase: Array[Char] = "thisisatest".toCharArray
 
@@ -19,7 +20,10 @@ object TestResources {
   def pkInputStream(): BufferedInputStream =
     inputStreamFrom(filenameOf("alice_privKey.txt"))
 
-  def inputStreamFrom(filename: String): BufferedInputStream = new BufferedInputStream(new FileInputStream(filename))
+  def inputStreamFrom(filename: String): BufferedInputStream = {
+    println(s"Streaming from $filename")
+    new BufferedInputStream(new FileInputStream(filename))
+  }
 
   val ZippedEncryptedFilename = "text.gpg.zip"
   val ZippedEncrypted2FilesFilename = "text2.gpg.zip"
