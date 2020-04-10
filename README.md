@@ -1,3 +1,9 @@
+
+__Introduction__
+
+This is a pot pourri of code that demonstrates Spark Streaming (mainly Spark Structured Streaming).
+It also demonstrates other aspects of Spark (eg, Delta Lake).
+
 __Docker__
 
 Run with:
