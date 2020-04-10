@@ -20,23 +20,26 @@ object DecryptStreamSpec extends DefaultRunnableSpec {
     } else throw new Exception(s"wasn't expecting file $name")
   }
 
+  def zioUnzip(file: String) = ZIO {
+    val in: BufferedInputStream = inputStreamFrom(filenameOf(file))
+    val baos1 = new ByteArrayOutputStream()
+    val baos2 = new ByteArrayOutputStream()
+    val nameToOutFn: NameTo[ByteArrayOutputStream] = nameToOut(baos1, baos2, _)
+    unzipping(pkInputStream(), PassPhrase, nameToOutFn, in)
+    (baos1, baos2)
+  }
+
   override def spec: ZSpec[TestEnvironment, Any] = suite("Zipping and encrypting legacy stream")(
     testM("decrypt into 2 streams"){
-      val in: BufferedInputStream = inputStreamFrom(filenameOf(ZippedEncrypted2FilesFilename))
-      val baos1 = new ByteArrayOutputStream()
-      val baos2 = new ByteArrayOutputStream()
-      val nameToOutFn: NameTo[ByteArrayOutputStream] = nameToOut(baos1, baos2, _)
-      unzipping(pkInputStream(), PassPhrase, nameToOutFn, in)
-      readAndCheck(baos1, EncryptedFileContents) *> readAndCheck(baos2, EncryptedFileContents2)
+       zioUnzip(ZippedEncrypted2FilesFilename).flatMap { case (baos1, baos2) =>
+         readAndCheck(baos1, EncryptedFileContents) *> readAndCheck(baos2, EncryptedFileContents2)
+       }
     }
     ,
     testM("decrypted") {
-      val in: BufferedInputStream = inputStreamFrom(filenameOf(ZippedEncryptedFilename))
-      val baos1 = new ByteArrayOutputStream()
-      val baos2 = new ByteArrayOutputStream()
-      val nameToOutFn: NameTo[ByteArrayOutputStream] = nameToOut(baos1, baos2, _)
-      unzipping(pkInputStream(), PassPhrase, nameToOutFn, in)
-      readAndCheck(baos1, EncryptedFileContents)
+      zioUnzip(ZippedEncryptedFilename).flatMap { case (baos1, baos2) =>
+        readAndCheck(baos1, EncryptedFileContents) *> readAndCheck(baos2, "")
+      }
     }
     ,
     testM("a legacy input stream should be converted to a byte array") {
