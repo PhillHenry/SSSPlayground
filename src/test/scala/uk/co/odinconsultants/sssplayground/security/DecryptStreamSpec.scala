@@ -27,8 +27,7 @@ object DecryptStreamSpec extends DefaultRunnableSpec {
       val baos2 = new ByteArrayOutputStream()
       val nameToOutFn: NameTo[ByteArrayOutputStream] = nameToOut(baos1, baos2, _)
       unzipping(pkInputStream(), PassPhrase, nameToOutFn, in)
-      readAndCheck(baos1, EncryptedFileContents)
-      readAndCheck(baos2, EncryptedFileContents2)
+      readAndCheck(baos1, EncryptedFileContents) *> readAndCheck(baos2, EncryptedFileContents2)
     }
     ,
     testM("decrypted") {
