@@ -20,7 +20,7 @@ object DecryptStreamSpec extends DefaultRunnableSpec {
     } else throw new Exception(s"wasn't expecting file $name")
   }
 
-  def zioUnzip(file: String) = ZIO {
+  def zioUnzip(file: String): Task[(ByteArrayOutputStream, ByteArrayOutputStream)] = ZIO {
     val in: BufferedInputStream = inputStreamFrom(filenameOf(file))
     val baos1 = new ByteArrayOutputStream()
     val baos2 = new ByteArrayOutputStream()
@@ -44,22 +44,29 @@ object DecryptStreamSpec extends DefaultRunnableSpec {
     ,
     testM("a legacy input stream should be converted to a byte array") {
       val actual  = "1234567890" * 100
-      val bais    = new ByteArrayInputStream(actual.getBytes())
-      val out     = readToByteArray(bais)
-      val shouldSatisfy:  Assertion[String] => TestResult = assert(new String(out))
-      val assertion:      Assertion[Any]                  = equalTo(actual)
-      ZIO(shouldSatisfy(assertion))
+      ZIO {
+        val bais    = new ByteArrayInputStream(actual.getBytes())
+        val out     = readToByteArray(bais)
+        bais.close()
+        out
+      }.flatMap { out =>
+        val shouldSatisfy:  Assertion[String] => TestResult = assert(new String(out))
+        val assertion:      Assertion[Any]                  = equalTo(actual)
+        ZIO(shouldSatisfy(assertion))
+      }
     }
   )
 
-  def readAndCheck(baos: ByteArrayOutputStream, expected: String): Task[TestResult] = {
-    val result  = new String(baos.toByteArray)
-    baos.close()
-    baos.close()
-    val shouldSatisfy:  Assertion[String] => TestResult = assert(result)
-    val assertion:      Assertion[Any]                  = equalTo(expected)
-    ZIO(shouldSatisfy(assertion))
-  }
+  def readAndCheck(baos: ByteArrayOutputStream, expected: String): Task[TestResult] =
+    ZIO {
+      val result  = new String(baos.toByteArray)
+      baos.close()
+      result
+    }.flatMap { result =>
+      val shouldSatisfy:  Assertion[String] => TestResult = assert(result)
+      val assertion:      Assertion[Any]                  = equalTo(expected)
+      ZIO(shouldSatisfy(assertion))
+    }
 
 
 }
