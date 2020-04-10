@@ -29,16 +29,30 @@ object DecryptStreamSpec extends DefaultRunnableSpec {
     (baos1, baos2)
   }
 
+  def stringFrom(baos: ByteArrayOutputStream): Task[String] = ZIO {
+    val result  = new String(baos.toByteArray)
+    baos.close()
+    result
+  }
+
+  def assertStringIs(result: String, expected: String): Task[TestResult] = {
+    val shouldSatisfy:  Assertion[String] => TestResult = assert(result)
+    val assertion:      Assertion[Any]                  = equalTo(expected)
+    ZIO(shouldSatisfy(assertion))
+  }
+
   override def spec: ZSpec[TestEnvironment, Any] = suite("Zipping and encrypting legacy stream")(
     testM("decrypt into 2 streams"){
        zioUnzip(ZippedEncrypted2FilesFilename).flatMap { case (baos1, baos2) =>
-         readAndCheck(baos1, EncryptedFileContents) *> readAndCheck(baos2, EncryptedFileContents2)
+         stringFrom(baos1).flatMap { r => assertStringIs(r, EncryptedFileContents)} *>
+           stringFrom(baos2).flatMap { r => assertStringIs(r, EncryptedFileContents2)}
        }
     }
     ,
     testM("decrypted") {
       zioUnzip(ZippedEncryptedFilename).flatMap { case (baos1, baos2) =>
-        readAndCheck(baos1, EncryptedFileContents) *> readAndCheck(baos2, "")
+        stringFrom(baos1).flatMap { r => assertStringIs(r, EncryptedFileContents)} *>
+          stringFrom(baos2).flatMap { r => assertStringIs(r, "")}
       }
     }
     ,
@@ -56,17 +70,6 @@ object DecryptStreamSpec extends DefaultRunnableSpec {
       }
     }
   )
-
-  def readAndCheck(baos: ByteArrayOutputStream, expected: String): Task[TestResult] =
-    ZIO {
-      val result  = new String(baos.toByteArray)
-      baos.close()
-      result
-    }.flatMap { result =>
-      val shouldSatisfy:  Assertion[String] => TestResult = assert(result)
-      val assertion:      Assertion[Any]                  = equalTo(expected)
-      ZIO(shouldSatisfy(assertion))
-    }
 
 
 }
