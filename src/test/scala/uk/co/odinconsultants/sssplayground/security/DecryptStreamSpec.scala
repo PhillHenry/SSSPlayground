@@ -6,7 +6,7 @@ import uk.co.odinconsultants.sssplayground.TestResources._
 import zio.test.Assertion.equalTo
 import zio.test.environment.TestEnvironment
 import zio.test._
-import zio.{Task, UIO, URIO, ZIO}
+import zio.{Task, UIO, URIO, ZIO, IO}
 
 object DecryptStreamSpec extends DefaultRunnableSpec {
 
@@ -44,8 +44,7 @@ object DecryptStreamSpec extends DefaultRunnableSpec {
   override def spec: ZSpec[TestEnvironment, Any] = suite("Zipping and encrypting legacy stream")(
     testM("decrypt into 2 streams"){
        zioUnzip(ZippedEncrypted2FilesFilename).bracket { case (o1, o2) =>
-//         UIO.effectTotal { // compiles but closing streams may throw IOException
-         UIO { o1.close() } *> UIO { o2.close() }
+         UIO { o1.close() } &> UIO { o2.close() }
        } { case (baos1, baos2) =>
          stringFrom(baos1).flatMap { r => assertStringIs(r, EncryptedFileContents)} *>
            stringFrom(baos2).flatMap { r => assertStringIs(r, EncryptedFileContents2)}
