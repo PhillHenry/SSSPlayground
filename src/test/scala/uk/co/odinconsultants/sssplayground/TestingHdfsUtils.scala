@@ -5,7 +5,7 @@ import uk.co.odinconsultants.htesting.log.Logging
 
 object TestingHdfsUtils extends Logging {
 
-  def readFileFrom(dir: String, endingWith: String): Map[String, String] = {
+  def contentsOfFilesIn(dir: String, endingWith: String): Map[String, String] = {
     val files = list(dir).filter(_.toString.endsWith(endingWith))
     info(s"JSON files: ${files.mkString(", ")}")
     files.map { f =>

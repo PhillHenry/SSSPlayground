@@ -81,7 +81,7 @@ class DeltaPersistSpec extends WordSpec with Matchers with LoggingToLocalFS {
   }
 
 
-  def readJsonFiles(dir: String): Map[String, String] = TestingHdfsUtils.readFileFrom(dir, ".json")
+  def readJsonFiles(dir: String): Map[String, String] = TestingHdfsUtils.contentsOfFilesIn(dir, ".json")
 
   private def writeBatch(filename: String, rows: Seq[MyRow], saveMode: SaveMode): Array[MyRow] = {
     deltaWrite(rows, filename, saveMode)
