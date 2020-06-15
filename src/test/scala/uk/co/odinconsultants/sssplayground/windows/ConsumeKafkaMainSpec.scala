@@ -1,6 +1,8 @@
 package uk.co.odinconsultants.sssplayground.windows
 
+import org.apache.hadoop.fs.Path
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.spark.sql.streaming.StreamingQuery
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Second, Seconds, Span}
 import org.scalatest.{Matchers, WordSpec}
@@ -14,31 +16,52 @@ import uk.co.odinconsultants.sssplayground.kafka.ProducerMain.json
 import uk.co.odinconsultants.sssplayground.kafka.Producing.{PayloadFn, sendAndWait}
 import uk.co.odinconsultants.sssplayground.windows.ConsumeKafkaMain._
 
+import scala.util.Try
+
 class ConsumeKafkaMainSpec extends WordSpec with Matchers with LoggingToLocalFS with Eventually {
 
   implicit override def patienceConfig: PatienceConfig = PatienceConfig(Span(10, Seconds), Span(1, Second))
 
   "Messages sent through Kafka" should {
 
+    "be persisted to HDFS in Parquet format" in {
+      val sink            = Sinks(ParquetFormat)
+      val hdfsDir         = hdfsUri + sinkFile
+      stream2BatchesTo(sink, hdfsDir)
+    }
+    "be persisted to HDFS in Delta format" in {
+      val sink            = Sinks(DeltaFormat)
+      val hdfsDir         = hdfsUri + sinkFile
+
+      stream2BatchesTo(sink, hdfsDir)
+      logToDisk(contentsOfFilesIn(hdfsDir, ".json"), "0")
+
+      val actualFiles = list(hdfsDir)
+      info(s"Files in $sinkFile:\n${actualFiles.mkString("\n")}")
+    }
+  }
+
+  val payloadFn: PayloadFn = _ => new ProducerRecord[String, String](topicName, json())
+
+  def stream2BatchesTo(sink: Sink, hdfsDir: String): Unit = {
     import session.implicits._
 
-    s"be persisted to HDFS in $FORMAT format" in {
-      val payloadFn: PayloadFn = _ => new ProducerRecord[String, String](topicName, json())
-      val hdfsDir         = hdfsUri + sinkFile
-      val stream          = streamStringsFromKafka(session, s"$hostname:$kafkaPort", topicName, trivialKafkaParseFn)
-      val processTimeMs   = 2000
-      streamingToDelta(stream, hdfsUri + sinkFile, processTimeMs)
+    val stream          = streamStringsFromKafka(session, s"$hostname:$kafkaPort", topicName, trivialKafkaParseFn)
+    val processTimeMs   = 2000
+    val query           = sink.sink(stream, hdfsUri + sinkFile, processTimeMs)
 
-      val n = 10
-      sendAndWait(payloadFn, hostname, kafkaPort, n).foreach(println)
-      sendAndWait(payloadFn, hostname, kafkaPort, n).foreach(println) // APPEND seems to need more messages before it actually writes to disk...
+    val n = 10
+    sendAndWait(payloadFn, hostname, kafkaPort, n).foreach(println)
+    sendAndWait(payloadFn, hostname, kafkaPort, n).foreach(println) // APPEND seems to need more messages before it actually writes to disk...
 
-      eventually{
-        readFromHdfs(hdfsDir, session).count() shouldBe (n.toLong * 2)
+    try {
+      eventually {
+        val count = sink.readFromHdfs(hdfsDir, session).count().toInt
+        println(s"count = $count")
+        count shouldBe (n * 2)
       }
-
-      logToDisk(contentsOfFilesIn(hdfsDir, ".json"), "0")
-      logToDisk(contentsOfFilesIn(hdfsDir, ".json"), "1")
+    } finally {
+      query.stop()
     }
   }
 
