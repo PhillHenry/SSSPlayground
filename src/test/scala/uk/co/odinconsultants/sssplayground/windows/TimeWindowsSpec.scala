@@ -1,7 +1,5 @@
 package uk.co.odinconsultants.sssplayground.windows
 
-import java.sql.Timestamp
-
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 import org.scalatest.{Matchers, WordSpec}

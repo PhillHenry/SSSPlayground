@@ -1,25 +1,24 @@
 package uk.co.odinconsultants.sssplayground.windows
 
-import org.apache.spark.sql.{Dataset, SparkSession}
 import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery, Trigger}
-import uk.co.odinconsultants.sssplayground.windows.ConsumeKafkaMain.Payload
+import org.apache.spark.sql.{Dataset, Encoder, SparkSession}
+
+import scala.reflect.ClassTag
 
 class Sink(format: String) {
 
-  def sink(df: Dataset[Payload], sinkFile: String, processTimeMs: Long): StreamingQuery = {
+  def sink(df: Dataset[_], sinkFile: String, processTimeMs: Long, partitionCol: Option[String] = Some("period")): StreamingQuery = {
     val checkpointFilename  = sinkFile + "checkpoint"
-    df.writeStream.format(format)
+    val x = df.writeStream.format(format)
       .outputMode(OutputMode.Append()) // Data source parquet does not support Complete output mode;
       .option("path",               sinkFile)
       .option("checkpointLocation", checkpointFilename)
       .trigger(Trigger.ProcessingTime(processTimeMs))
-      .partitionBy("period")
-      .start()
+    partitionCol.map(p => x.partitionBy(p)).getOrElse(x).start()
   }
 
-  def readFromHdfs(path: String, session: SparkSession): Dataset[Payload] = {
-    import session.implicits._
-    session.read.format(format).load(path).as[Payload]
+  def readFromHdfs[T : Encoder : ClassTag](path: String, session: SparkSession): Dataset[T] = {
+    session.read.format(format).load(path).as[T]
   }
 }
 

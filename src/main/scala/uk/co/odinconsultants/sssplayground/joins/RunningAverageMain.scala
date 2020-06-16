@@ -31,8 +31,9 @@ object RunningAverageMain {
     sample()
   }
 
+  val DatumDelimiter = ":"
   val parsingDatum: KafkaParseFn[Datum] = { case (k, v) =>
-    val Array(tsStr, amtStr) = v.split(":")
+    val Array(tsStr, amtStr) = v.split(DatumDelimiter)
     Some(Datum(k.toLong, amtStr.toDouble, new Timestamp(tsStr.toLong)))
   }
 
