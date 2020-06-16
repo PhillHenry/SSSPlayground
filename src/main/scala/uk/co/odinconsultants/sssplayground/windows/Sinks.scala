@@ -17,9 +17,11 @@ class Sink(format: String) {
     partitionCol.map(p => x.partitionBy(p)).getOrElse(x).start()
   }
 
-  def readFromHdfs[T : Encoder : ClassTag](path: String, session: SparkSession): Dataset[T] = {
-    session.read.format(format).load(path).as[T]
-  }
+  def readFromHdfs[T : Encoder : ClassTag](path: String, session: SparkSession): Dataset[T] =
+    readDataFrameFromHdfs(path, session).as[T]
+
+  def readDataFrameFromHdfs(path: String, session: SparkSession) =
+    session.read.format(format).load(path)
 }
 
 sealed trait Format {
