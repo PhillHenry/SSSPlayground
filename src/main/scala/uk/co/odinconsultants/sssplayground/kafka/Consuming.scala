@@ -11,19 +11,20 @@ object Consuming {
     val df = streamFromKafka(session, kafkaUrl, topicName)
     import df.sqlContext.implicits._
     df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)").as[(String, String)].flatMap { case (key, value) =>
-      fn(key, value)
+      val x = fn(key, value)
+      x.foreach { msg =>
+        println(s"message timestamp = ${msg}")
+      }
+      x
     }
   }
 
-
-  def streamToHDFS[T: Encoder](df: Dataset[T], sinkFile: String, processTimeMs: Long): DataStreamWriter[T] = {
+  def streamToHDFS[T: Encoder](df: Dataset[T], sinkFile: String, processTimeMs: Long): DataStreamWriter[T] =
     df.writeStream.format("parquet")
       .outputMode(OutputMode.Append()) // Data source parquet does not support Complete output mode;
       .option("path", sinkFile)
       .option("checkpointLocation", sinkFile + "checkpoint")
       .trigger(Trigger.ProcessingTime(processTimeMs))
-  }
-
 
   def streamFromKafka(session: SparkSession, kafkaUrl: String, topicName: String): DataFrame =
     session

@@ -31,8 +31,12 @@ object TimestampedDataFixture {
   val nKeys = 7
   val nIds  = 11
 
-  def timestampedData(n: Int, nKeys: Int = nKeys, nIds: Int = nIds): List[(Int, Timestamp, Int, Int)] = {
-    val times = generateTimestamps(n, midnight30Dec2019UTC, midnight11Feb2020UTC)
+  def timestampedData(n: Int,
+                      nKeys:    Int       = nKeys,
+                      nIds:     Int       = nIds,
+                      startInc: Timestamp = midnight30Dec2019UTC,
+                      endExcl:  Timestamp = midnight11Feb2020UTC): List[(Int, Timestamp, Int, Int)] = {
+    val times = generateTimestamps(n, startInc, endExcl)
     times.zipWithIndex.map { case (ts, i) => (i, ts, i % nKeys, i % nIds)}
   }
 
