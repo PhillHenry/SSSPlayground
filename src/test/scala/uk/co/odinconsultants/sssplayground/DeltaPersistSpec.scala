@@ -70,7 +70,7 @@ class DeltaPersistSpec extends WordSpec with Matchers with LoggingToLocalFS {
       logToDisk(readJsonFiles(filename), "5after_vacuum")
     }
 
-    "but its JSON files stay the same" in {
+    "keep its JSON files the same" in {
       val isJsonFile: Path => Boolean = _.toString.endsWith(".json")
       val beforeJson: List[Path]      = before.toList.filter(isJsonFile)
       val afterJson:  List[Path]      = list(filename).filter(isJsonFile)

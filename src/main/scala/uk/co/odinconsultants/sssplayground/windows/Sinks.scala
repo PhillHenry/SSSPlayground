@@ -1,7 +1,7 @@
 package uk.co.odinconsultants.sssplayground.windows
 
 import org.apache.spark.sql.streaming.{DataStreamWriter, OutputMode, StreamingQuery, Trigger}
-import org.apache.spark.sql.{Dataset, Encoder, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, Encoder, SparkSession}
 
 import scala.reflect.ClassTag
 
@@ -21,7 +21,7 @@ class Sink(format: String) {
   def readFromHdfs[T : Encoder : ClassTag](path: String, session: SparkSession): Dataset[T] =
     readDataFrameFromHdfs(path, session).as[T]
 
-  def readDataFrameFromHdfs(path: String, session: SparkSession) =
+  def readDataFrameFromHdfs(path: String, session: SparkSession): DataFrame =
     session.read.format(format).load(path)
 }
 
