@@ -37,7 +37,7 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
 
       val sink          = Sinks(ParquetFormat)
       val processTimeMs = 2000
-      val query         = sink.sink(ds, sinkFile, processTimeMs, None)
+      val query         = sink.writeStream(ds, sinkFile, processTimeMs, None)
 //      query.awaitTermination(10000L)
 
       val n             = 100
@@ -47,13 +47,10 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
 
       StreamingAssert.assert(query, {
         query.processAllAvailable()
-        withClue(s"${list(sinkFile).mkString("\n")}\n") {
 //          val count = session.read.format("parquet").load(sinkFile).count().toInt
-          val count = sink.readDataFrameFromHdfs(sinkFile, session).count().toInt
-          println(s"count = $count")
-          count shouldBe (n * 2)
-        }
-
+        val count = sink.readDataFrameFromHdfs(sinkFile, session).count().toInt
+        println(s"count = $count")
+        count shouldBe (n * 2)
       })
     }
   }

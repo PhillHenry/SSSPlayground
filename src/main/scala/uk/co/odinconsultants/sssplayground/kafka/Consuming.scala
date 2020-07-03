@@ -11,11 +11,7 @@ object Consuming {
     val df = streamFromKafka(session, kafkaUrl, topicName)
     import df.sqlContext.implicits._
     df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)").as[(String, String)].flatMap { case (key, value) =>
-      val x = fn(key, value)
-      x.foreach { msg =>
-        println(s"message timestamp = ${msg}")
-      }
-      x
+      fn(key, value)
     }
   }
 

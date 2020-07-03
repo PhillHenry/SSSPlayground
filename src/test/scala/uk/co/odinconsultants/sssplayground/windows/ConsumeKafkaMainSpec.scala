@@ -1,6 +1,7 @@
 package uk.co.odinconsultants.sssplayground.windows
 
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.log4j.Logger
 import org.scalatest.{Matchers, WordSpec}
 import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting.hdfsUri
 import uk.co.odinconsultants.htesting.spark.SparkForTesting._
@@ -33,7 +34,7 @@ class ConsumeKafkaMainSpec extends WordSpec with Matchers with LoggingToLocalFS 
   def stream2BatchesTo(sink: Sink, hdfsDir: String): Unit = {
     val stream          = streamStringsFromKafka(session, s"$hostname:$kafkaPort", topicName, trivialKafkaParseFn)
     val processTimeMs   = 2000
-    val query           = sink.sink(stream, hdfsUri + sinkFile, processTimeMs)
+    val query           = sink.writeStream(stream, hdfsUri + sinkFile, processTimeMs)
 
     val n = 10
     sendAndWait(payloadFn, hostname, kafkaPort, n).foreach(println)
