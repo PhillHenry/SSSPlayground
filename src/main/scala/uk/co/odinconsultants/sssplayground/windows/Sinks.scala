@@ -7,7 +7,10 @@ import scala.reflect.ClassTag
 
 class Sink(format: String) {
 
-  def writeStream(df: Dataset[_], sinkFile: String, processTimeMs: Long, partitionCol: Option[String] = Some("period")): StreamingQuery = {
+  def writeStream(df:             Dataset[_],
+                  sinkFile:       String,
+                  processTimeMs:  Long,
+                  partitionCol:   Option[String] = Some("period")): StreamingQuery = {
     val checkpointFilename  = sinkFile + "checkpoint"
     val stream              = df.writeStream.format(format)
       .outputMode(OutputMode.Append()) // Data source parquet does not support Complete output mode;

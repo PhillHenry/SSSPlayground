@@ -1,9 +1,12 @@
 package uk.co.odinconsultants.sssplayground.kafka
 
+import org.apache.log4j.Logger
 import org.apache.spark.sql.streaming.{DataStreamWriter, OutputMode, Trigger}
 import org.apache.spark.sql.{DataFrame, Dataset, Encoder, SparkSession}
 
 object Consuming {
+
+  val logger = Logger.getLogger(this.getClass)
 
   type KafkaParseFn[T] = (String, String) => Option[T]
 
@@ -11,6 +14,7 @@ object Consuming {
     val df = streamFromKafka(session, kafkaUrl, topicName)
     import df.sqlContext.implicits._
     df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)").as[(String, String)].flatMap { case (key, value) =>
+      logger.debug(s"key = $key, value = $value")
       fn(key, value)
     }
   }

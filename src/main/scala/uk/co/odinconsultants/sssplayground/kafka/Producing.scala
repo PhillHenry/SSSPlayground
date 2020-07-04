@@ -6,9 +6,13 @@ import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecor
 import org.apache.kafka.common.serialization.StringSerializer
 import java.util.concurrent.{TimeUnit, Future => JFuture}
 
+import org.apache.log4j.Logger
+
 import scala.collection.immutable
 
 object Producing {
+
+  val logger = Logger.getLogger(Producing.getClass)
 
   def toLocalEndPoint(hostname: String, port: Int) = s"$hostname:$port"
 
@@ -38,7 +42,10 @@ object Producing {
     val producer = createProducer(hostname, kPort)
     val jFutures = sendMessages(producer, n, fn)
 
-    println("Waiting for Kafka to consume message")
-    jFutures.map(_.get(10, TimeUnit.SECONDS))
+    logger.info("Waiting for Kafka to consume message...")
+    val start = System.currentTimeMillis()
+    val records = jFutures.map(_.get(10, TimeUnit.SECONDS))
+    logger.info(s"Sending $n messages took ${System.currentTimeMillis() - start} ms")
+    records
   }
 }
