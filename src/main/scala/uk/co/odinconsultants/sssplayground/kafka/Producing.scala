@@ -32,19 +32,19 @@ object Producing {
 
   def createProducer(hostname: String, kPort: Int): KafkaProducer[String, String] = {
     val props = new Properties()
-    props.put("bootstrap.servers", toLocalEndPoint(hostname, kPort))
-    props.put("key.serializer", classOf[StringSerializer].getName)
-    props.put("value.serializer", classOf[StringSerializer].getName)
+    props.put("bootstrap.servers",  toLocalEndPoint(hostname, kPort))
+    props.put("key.serializer",     classOf[StringSerializer].getName)
+    props.put("value.serializer",   classOf[StringSerializer].getName)
     new KafkaProducer[String, String](props)
   }
 
   def sendAndWait(fn: PayloadFn, hostname: String, kPort: Int, n: Int): immutable.Seq[RecordMetadata] = {
-    val producer = createProducer(hostname, kPort)
-    val jFutures = sendMessages(producer, n, fn)
+    val producer  = createProducer(hostname, kPort)
+    val jFutures  = sendMessages(producer, n, fn)
 
     logger.info("Waiting for Kafka to consume message...")
-    val start = System.currentTimeMillis()
-    val records = jFutures.map(_.get(10, TimeUnit.SECONDS))
+    val start     = System.currentTimeMillis()
+    val records   = jFutures.map(_.get(10, TimeUnit.SECONDS))
     logger.info(s"Sending $n messages took ${System.currentTimeMillis() - start} ms")
     records
   }

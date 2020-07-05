@@ -5,11 +5,6 @@ import java.io.{BufferedInputStream, FileInputStream, InputStream}
 
 object TestResources {
 
-  val EncryptedFileContents   = "Well done! You've cracked the code!\n"
-  val EncryptedFileContents2  = "And this too!"
-
-  val PassPhrase: Array[Char] = "thisisatest".toCharArray
-
   def testResourceFQN(filename: String): String = {
     val tld = this.getClass.getResource(separator)
     s"${tld}..${separator}..${separator}src${separator}test${separator}resources${separator}$filename"
@@ -17,15 +12,9 @@ object TestResources {
 
   def filenameOf(resource: String): String = testResourceFQN(resource).substring(5)
 
-  def pkInputStream(): BufferedInputStream =
-    inputStreamFrom(filenameOf("alice_privKey.txt"))
-
   def inputStreamFrom(filename: String): BufferedInputStream = {
     println(s"Streaming from $filename")
     new BufferedInputStream(new FileInputStream(filename))
   }
 
-  val ZippedEncryptedFilename = "text.gpg.zip"
-  val ZippedEncrypted2FilesFilename = "text2.gpg.zip"
-  val ZippedEncryptedFileFQN: String = testResourceFQN(ZippedEncryptedFilename)
 }

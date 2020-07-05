@@ -4,24 +4,25 @@ import java.sql.Timestamp
 
 import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
 import org.apache.log4j.Logger
-import org.apache.spark.sql.{Column, DataFrame, Dataset}
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.{count, mean, window}
 import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery, Trigger}
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{Matchers, WordSpec}
-import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting.{hdfsUri, list}
+import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting.hdfsUri
 import uk.co.odinconsultants.htesting.spark.SparkForTesting.session
-import uk.co.odinconsultants.sssplayground.TestingKafka.{hostname, kafkaPort, topicName}
-import uk.co.odinconsultants.sssplayground.joins.RunningAverageMain
+import uk.co.odinconsultants.sssplayground.TestingKafka.{hostname, kafkaPort}
 import uk.co.odinconsultants.sssplayground.joins.RunningAverageMain.{DatumDelimiter, parsingDatum}
 import uk.co.odinconsultants.sssplayground.kafka.Consuming.streamStringsFromKafka
 import uk.co.odinconsultants.sssplayground.kafka.Producing.{PayloadFn, sendAndWait}
-import uk.co.odinconsultants.sssplayground.windows.TimestampedDataFixture.{TimestampedData, midnight11Feb2020UTC, midnight30Dec2019UTC, timestampedData}
+import uk.co.odinconsultants.sssplayground.windows.TimestampedDataFixture.{TimestampedData, timestampedData}
 
 import scala.collection.immutable
 import scala.util.{Failure, Try}
 
 class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
+
+  val topicName = this.getClass.getSimpleName
 
   val logger = Logger.getLogger(this.getClass)
 
@@ -31,7 +32,6 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
   val timeUnit      = "milliseconds"
 
   "Aggregated stream" should {
-    import session.implicits._
 
     val sinkFile = randomFileName()
 
@@ -69,7 +69,7 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
         StreamingAssert.assert(query, {
           logger.info("Processing all available...")
           query.processAllAvailable()
-          logger.info("Processed")
+          logger.info(s"Processed. Data should have been written to $sinkFile")
           val count = fromDisk().count().toInt
           logger.info(s"count = $count")
           count shouldBe n

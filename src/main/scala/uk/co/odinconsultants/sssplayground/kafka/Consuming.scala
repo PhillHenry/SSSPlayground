@@ -15,10 +15,12 @@ object Consuming {
     import df.sqlContext.implicits._
     df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)").as[(String, String)].flatMap { case (key, value) =>
       val x = fn(key, value)
-      logger.debug(s"key = $key, value = $value, x = $x")
+      logger.debug(s"key = ${toTruncatedString(key)}, value = ${toTruncatedString(value)}, x = ${toTruncatedString(x)}")
       x
     }
   }
+
+  def toTruncatedString(x: Any): String = if (x == null) "null" else x.toString.substring(0, math.min(x.toString.length, 100))
 
   def streamToHDFS[T: Encoder](df: Dataset[T], sinkFile: String, processTimeMs: Long): DataStreamWriter[T] =
     df.writeStream.format("parquet")
