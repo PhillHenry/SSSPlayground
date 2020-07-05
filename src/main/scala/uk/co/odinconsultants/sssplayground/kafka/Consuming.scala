@@ -14,8 +14,9 @@ object Consuming {
     val df = streamFromKafka(session, kafkaUrl, topicName)
     import df.sqlContext.implicits._
     df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)").as[(String, String)].flatMap { case (key, value) =>
-      logger.debug(s"key = $key, value = $value")
-      fn(key, value)
+      val x = fn(key, value)
+      logger.debug(s"key = $key, value = $value, x = $x")
+      x
     }
   }
 

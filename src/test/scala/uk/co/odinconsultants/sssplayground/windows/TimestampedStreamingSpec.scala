@@ -6,6 +6,7 @@ import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{Column, DataFrame, Dataset}
 import org.apache.spark.sql.functions.{count, mean, window}
+import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery, Trigger}
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{Matchers, WordSpec}
 import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting.{hdfsUri, list}
@@ -26,20 +27,28 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
 
   def randomFileName(): String = hdfsUri + this.getClass.getSimpleName + System.nanoTime()
 
-  val processTimeMs = 10000
+  val processTimeMs = 5000
   val timeUnit      = "milliseconds"
 
   "Aggregated stream" should {
-
+    import session.implicits._
 
     val sinkFile = randomFileName()
 
-    "be written to HDFS" ignore {
+    "be written to HDFS only if there is data still to process (per SPARK-24156)" in {
       val dataFrame     = sourceStream()
 
       val sink          = Sinks(ParquetFormat)
 
       val query         = sink.writeStream(dataFrame, sinkFile, processTimeMs, None)
+
+      val console: StreamingQuery = dataFrame
+//        .orderBy('id)
+        .writeStream.format("console")
+        .outputMode(OutputMode.Append())
+        .option("truncate", "false")
+        .trigger(Trigger.ProcessingTime(processTimeMs))
+        .start()
 
       val n             = 10
       val dataWindow    = processTimeMs / 2
@@ -47,11 +56,11 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
       val batch1        = makeTestData(n, dataWindow)
       sendData(batch1)
 
-      pauseMs(dataWindow)
+      pauseMs(dataWindow * 4)
 
       val batch2        = makeTestData(n, dataWindow)
       sendData(batch2)
-      
+
       val all           = batch1 ++ batch2
 //      all.groupBy(_._2.getTime / processTimeMs).map { case (_, xs) => xs.groupBy(_._1)}
 
@@ -63,10 +72,11 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
           logger.info("Processed")
           val count = fromDisk().count().toInt
           logger.info(s"count = $count")
-          count shouldBe (n * 2)
+          count shouldBe n
         })
       } match {
         case Failure(e) =>
+          query.stop()
           fromDisk().show(false)
           fromDisk().collect().sortBy(_.getLong(0)).foreach(println)
           fail(e)
@@ -79,15 +89,16 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
     import session.implicits._
     val dataSet     = streamStringsFromKafka(session, s"$hostname:$kafkaPort", topicName, parsingDatum)
     // Append output mode not supported when there are streaming aggregations on streaming DataFrames/DataSets without watermark
+    // Event time must be defined on a window or a timestamp, but id is of type bigint
     val stream      = dataSet.withWatermark("ts", s"${processTimeMs} $timeUnit") // appears we wait {delayThreshold} before processing messages (?)
     val overWindow  = window('ts,
-      windowDuration = s"$processTimeMs $timeUnit"
+      windowDuration = s"${processTimeMs} $timeUnit"
       //        ,slideDuration   = s"$processTimeMs $timeUnit"
     )
     stream
       .groupBy('id, overWindow)
-      .agg('id, count('id), mean('amount))
-      .toDF("idX", "timestamp", "id", "count", "mean")
+      .agg(count('id).as("count_id"), mean('amount))
+      .toDF( "id", "timestamp", "count", "mean")
   }
 
   private def pauseMs(dataWindow: Int) = {
