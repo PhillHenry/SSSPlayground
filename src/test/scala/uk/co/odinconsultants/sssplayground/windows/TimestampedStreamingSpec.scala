@@ -31,11 +31,13 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
   val processTimeMs = 5000
   val timeUnit      = "milliseconds"
 
+  import session.implicits._
+
   "Aggregated stream" should {
 
     val sinkFile = randomFileName()
 
-    "be written to HDFS only if there is data still to process (per SPARK-24156)" in {
+    "be written to HDFS even if there is data still to process (per SPARK-24156)" in {
       val dataFrame     = sourceStream()
 
       val sink          = Sinks(ParquetFormat)
@@ -44,10 +46,11 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
 
       val console: StreamingQuery = dataFrame
 //        .orderBy('id)
-        .writeStream.format("console")
-        .outputMode(OutputMode.Append())
+        .writeStream
+        .format("console")
+        .outputMode(OutputMode.Complete())
         .option("truncate", "false")
-        .trigger(Trigger.ProcessingTime(processTimeMs))
+//        .trigger(Trigger.Continuous(processTimeMs))
         .start()
 
       val n             = 10
@@ -72,7 +75,7 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
           logger.info(s"Processed. Data should have been written to $sinkFile")
           val count = fromDisk().count().toInt
           logger.info(s"count = $count")
-          count shouldBe n
+          count shouldBe (n * 2)
         })
       } match {
         case Failure(e) =>
@@ -86,7 +89,6 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
   }
 
   private def sourceStream(): DataFrame = {
-    import session.implicits._
     val dataSet     = streamStringsFromKafka(session, s"$hostname:$kafkaPort", topicName, parsingDatum)
     // Append output mode not supported when there are streaming aggregations on streaming DataFrames/DataSets without watermark
     // Event time must be defined on a window or a timestamp, but id is of type bigint

@@ -16,7 +16,7 @@ class Sink(format: String) {
       .outputMode(OutputMode.Append()) // Data source parquet does not support Complete output mode;
       .option("path",               sinkFile)
       .option("checkpointLocation", checkpointFilename)
-      .trigger(Trigger.ProcessingTime(processTimeMs))
+//      .trigger(Trigger.ProcessingTime(processTimeMs))
     val partitionedStream   = partitionCol.map(p => stream.partitionBy(p)).getOrElse(stream)
     partitionedStream.start()
   }
