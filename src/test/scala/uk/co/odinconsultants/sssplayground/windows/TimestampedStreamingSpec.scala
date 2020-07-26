@@ -1,26 +1,21 @@
 package uk.co.odinconsultants.sssplayground.windows
 
-import java.sql.Timestamp
+import java.util.concurrent.Future
 
-import org.apache.hadoop.fs.Path
-import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
+import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord, RecordMetadata}
 import org.apache.log4j.Logger
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery, Trigger}
+import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery}
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{Matchers, WordSpec}
-import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting
 import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting.hdfsUri
 import uk.co.odinconsultants.htesting.spark.SparkForTesting.session
 import uk.co.odinconsultants.sssplayground.TestingKafka.{hostname, kafkaPort}
 import uk.co.odinconsultants.sssplayground.joins.RunningAverageMain.{DatumDelimiter, parsingDatum}
 import uk.co.odinconsultants.sssplayground.kafka.Consuming.streamStringsFromKafka
-import uk.co.odinconsultants.sssplayground.kafka.Producing
-import uk.co.odinconsultants.sssplayground.kafka.Producing.{PayloadFn, ProducerCallback, createProducer, sendAndWait, sendMessages, waitForAll}
-import uk.co.odinconsultants.sssplayground.windows.TimestampedDataFixture.{TimestampedData, timestampedData}
+import uk.co.odinconsultants.sssplayground.kafka.Producing.{PayloadFn, ProducerCallback, createProducer, waitForAll}
 
-import scala.collection.immutable
 import scala.util.{Failure, Try}
 
 class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
@@ -31,7 +26,7 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
 
   def randomFileName(): String = hdfsUri + this.getClass.getSimpleName + System.nanoTime()
 
-  val processTimeMs = 3000
+  val processTimeMs = 2000
   val timeUnit      = "milliseconds"
 
   import session.implicits._
@@ -88,18 +83,17 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
 
     def fromDisk(): DataFrame = sink.readDataFrameFromHdfs(sinkFile, session)
 
-    def waitForFileToContain(expected: Int): Unit = {
+    def waitForFileToContain(expected: Int): Unit =
       StreamingAssert.assert({
         logger.info(s"Processed. Data should have been written to $sinkFile. ")
         val count = fromDisk().count().toInt
         logger.info(s"count = $count")
         count shouldBe expected
       })
-    }
   }
 
 
-  def sendMessages(n: Int, producer: KafkaProducer[String, String], pauseMS: Long) = {
+  def sendMessages(n: Int, producer: KafkaProducer[String, String], pauseMS: Long) =
     (1 to n).map { i =>
       val now     = new java.util.Date()
       val payload = s"${now.getTime}$DatumDelimiter${i * Math.PI}"
@@ -109,13 +103,12 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
       pauseMs(pauseMS)
       jFuture
     }
-  }
 
   private def logQuery(query: StreamingQuery) = {
     logger.info(s"lastProgress = ${query.lastProgress}")
     logger.info(s"status = ${query.status}")
     query.recentProgress.foreach { progress =>
-      logger.info(s"batch id = ${progress.batchId}: number of input rows = ${progress.numInputRows}")
+      logger.info(s"${progress.name}: batch id = ${progress.batchId}: number of input rows = ${progress.numInputRows}")
     }
   }
 
