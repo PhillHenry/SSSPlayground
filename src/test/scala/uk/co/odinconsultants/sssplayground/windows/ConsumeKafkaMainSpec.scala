@@ -41,7 +41,7 @@ class ConsumeKafkaMainSpec extends WordSpec with Matchers with LoggingToLocalFS 
     Thread.sleep(processTimeMs * 2)
     sendAndWait(payloadFn, hostname, kafkaPort, n).foreach(println) // APPEND seems to need more messages before it actually writes to disk...
 
-    StreamingAssert.assert(query, {
+    StreamingAssert.assert({
       val count = sink.readFromHdfs[Payload](hdfsDir, session).count().toInt
       println(s"count = $count")
       count shouldBe (n * 2)

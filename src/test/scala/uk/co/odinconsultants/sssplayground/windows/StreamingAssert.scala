@@ -13,7 +13,7 @@ object StreamingAssert extends Eventually {
 
   implicit override def patienceConfig: PatienceConfig = PatienceConfig(Span(21, Seconds), Span(1, Second))
 
-  def assert(query: StreamingQuery, f: => Unit): Unit = {
+  def assert(f: => Unit): Unit = {
     eventually {
       Try {
         f

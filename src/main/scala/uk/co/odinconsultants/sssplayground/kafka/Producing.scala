@@ -20,14 +20,16 @@ object Producing {
 
   def sendMessages(producer: KafkaProducer[String, String], n: Int, fn: PayloadFn): immutable.Seq[JFuture[RecordMetadata]] = {
     val jFutures = (1 to n).map { i =>
-      val jFuture = producer.send(fn(i), new Callback {
-        override def onCompletion(metadata: RecordMetadata, x: Exception): Unit = {
-          if (x != null) x.printStackTrace()
-        }
-      })
+      val jFuture = producer.send(fn(i), ProducerCallback)
       jFuture
     }
     jFutures
+  }
+
+  val ProducerCallback: Callback = new Callback {
+    override def onCompletion(metadata: RecordMetadata, x: Exception): Unit = {
+      if (x != null) x.printStackTrace()
+    }
   }
 
   def createProducer(hostname: String, kPort: Int): KafkaProducer[String, String] = {
@@ -44,8 +46,11 @@ object Producing {
 
     logger.info("Waiting for Kafka to consume message...")
     val start     = System.currentTimeMillis()
-    val records   = jFutures.map(_.get(10, TimeUnit.SECONDS))
+    val records   = waitForAll(jFutures)
     logger.info(s"Sending $n messages took ${System.currentTimeMillis() - start} ms")
     records
   }
+
+  def waitForAll(jFutures: immutable.Seq[JFuture[RecordMetadata]]) =
+    jFutures.map(_.get(10, TimeUnit.SECONDS))
 }
