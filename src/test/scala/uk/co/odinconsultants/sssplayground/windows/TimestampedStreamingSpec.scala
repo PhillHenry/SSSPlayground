@@ -5,12 +5,13 @@ import java.util.concurrent.Future
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord, RecordMetadata}
 import org.apache.log4j.Logger
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery}
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{Matchers, WordSpec}
 import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting.hdfsUri
-import uk.co.odinconsultants.htesting.spark.SparkForTesting.session
+import uk.co.odinconsultants.htesting.spark.SparkForTesting._
 import uk.co.odinconsultants.sssplayground.TestingKafka.{hostname, kafkaPort}
 import uk.co.odinconsultants.sssplayground.joins.RunningAverageMain.{DatumDelimiter, parsingDatum}
 import uk.co.odinconsultants.sssplayground.kafka.Consuming.streamStringsFromKafka
@@ -38,9 +39,8 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
     val sink     = Sinks(ParquetFormat)
 
     "be written to HDFS even if there is data still to process (per SPARK-24156)" in {
-      val dataFrame     = sourceStream()//.withWatermark("timestamp", s"${processTimeMs / 2} $timeUnit") <-- this watermark means nothing comes through
-
-      val query         = sink.writeStream(dataFrame, sinkFile, processTimeMs, None)
+      val dataFrame = sourceStream()//.withWatermark("timestamp", s"${processTimeMs / 2} $timeUnit") <-- this watermark means nothing comes through
+      val query     = sink.writeStream(dataFrame, sinkFile, processTimeMs, None)(RowEncoder(dataFrame.schema))
 
       val console: StreamingQuery = dataFrame
         .writeStream
