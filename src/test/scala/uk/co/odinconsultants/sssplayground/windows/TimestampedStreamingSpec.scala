@@ -39,8 +39,9 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
     val sink     = Sinks(ParquetFormat)
 
     "be written to HDFS even if there is data still to process (per SPARK-24156)" in {
-      val dataFrame = sourceStream()//.withWatermark("timestamp", s"${processTimeMs / 2} $timeUnit") //<-- this watermark means nothing comes through
-      val query     = sink.writeStream(dataFrame, sinkFile, Some(Trigger.ProcessingTime(processTimeMs)), None)(RowEncoder(dataFrame.schema))
+      val dataFrame   = sourceStream()//.withWatermark("ts", s"${processTimeMs / 2} $timeUnit") //<-- this watermark means nothing comes through
+      val someTrigger = Some(Trigger.ProcessingTime(processTimeMs))
+      val query       = sink.writeStream(dataFrame, sinkFile, someTrigger, None)(RowEncoder(dataFrame.schema))
 
       val console: StreamingQuery = dataFrame
         .writeStream
@@ -63,9 +64,6 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
       pauseMs(processTimeMs * 4)
 
       waitForAll(sendMessages(1, producer, processTimeMs / nFirst)) // dammit - I still need this to make the test pass!
-//      query.awaitTermination()
-//      val query = sink.writeStream(dataFrame, sinkFile, processTimeMs, None)(RowEncoder(dataFrame.schema))
-//      query.awaitTermination()
       logQuery(console)
 
       Try {
