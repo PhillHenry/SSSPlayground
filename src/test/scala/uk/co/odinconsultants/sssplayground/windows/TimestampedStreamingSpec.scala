@@ -39,7 +39,7 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
     val sink     = Sinks(ParquetFormat)
 
     "be written to HDFS even if there is data still to process (per SPARK-24156)" in {
-      val dataFrame = sourceStream()//.withWatermark("timestamp", s"${processTimeMs / 2} $timeUnit") <-- this watermark means nothing comes through
+      val dataFrame = sourceStream()//.withWatermark("timestamp", s"${processTimeMs / 2} $timeUnit") //<-- this watermark means nothing comes through
       val query     = sink.writeStream(dataFrame, sinkFile, processTimeMs, None)(RowEncoder(dataFrame.schema))
 
       val console: StreamingQuery = dataFrame
@@ -50,24 +50,26 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
         .queryName("console")
         .start()
 
-      val n             = 10
-
+      val nFirst        = 10
       val producer      = createProducer(hostname, kafkaPort)
 
-      waitForAll(sendMessages(n, producer, processTimeMs / n))
+      waitForAll(sendMessages(nFirst, producer, processTimeMs / nFirst))
 
 //      pauseMs(processTimeMs)
 
-      waitForAll(sendMessages(n, producer, processTimeMs / n))
+      val nSecond       = 9
+      waitForAll(sendMessages(nSecond, producer, processTimeMs / nSecond))
 
       pauseMs(processTimeMs * 4)
 
-      waitForAll(sendMessages(1, producer, processTimeMs / n)) // dammit - I still need this to make the test pass!
-
+      waitForAll(sendMessages(1, producer, processTimeMs / nFirst)) // dammit - I still need this to make the test pass!
+//      query.awaitTermination()
+//      val query = sink.writeStream(dataFrame, sinkFile, processTimeMs, None)(RowEncoder(dataFrame.schema))
+//      query.awaitTermination()
       logQuery(console)
 
       Try {
-        waitForFileToContain(n * 2)
+        waitForFileToContain(nFirst + nSecond)
       } match {
         case Failure(e) =>
           logQuery(query)
@@ -119,7 +121,7 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
     val stream      = dataSet.withWatermark("ts", s"${processTimeMs} $timeUnit") // appears we wait {delayThreshold} before processing messages (?)
     val overWindow  = window('ts,
       windowDuration = s"${processTimeMs} $timeUnit"
-      //        ,slideDuration   = s"$processTimeMs $timeUnit"
+              ,slideDuration   = s"$processTimeMs $timeUnit"
     )
     stream
       .groupBy('id, overWindow)
