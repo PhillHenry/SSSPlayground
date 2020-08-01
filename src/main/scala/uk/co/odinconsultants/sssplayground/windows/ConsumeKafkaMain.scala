@@ -16,7 +16,7 @@ object ConsumeKafkaMain {
     import s.implicits._
     val stream          = streamStringsFromKafka(s, kafkaUrl, topicName, trivialKafkaParseFn)
     val sink            = Sinks(DeltaFormat)
-    sink.writeStream(stream, sinkFile, processTimeMs)
+    sink.writeStream(stream, sinkFile, Some(Trigger.ProcessingTime(processTimeMs)))
     s.streams.awaitAnyTermination()
   }
 

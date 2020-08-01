@@ -3,6 +3,7 @@ package uk.co.odinconsultants.sssplayground.joins
 import java.sql.Timestamp
 
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.streaming.Trigger
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
 import uk.co.odinconsultants.sssplayground.kafka.Consuming._
 import uk.co.odinconsultants.sssplayground.spark.Init
@@ -22,7 +23,7 @@ object RunningAverageMain {
 
     @tailrec
     def sample(): Unit = {
-      val query  = streamToHDFS(stream, sinkFile = args(2), processTimeMs = args(3).toLong).start()
+      val query  = streamToHDFS(stream, sinkFile = args(2), Some(Trigger.ProcessingTime(args(3).toLong))).start()
       Thread.sleep(pauseMS)
       query.stop()
       sample()

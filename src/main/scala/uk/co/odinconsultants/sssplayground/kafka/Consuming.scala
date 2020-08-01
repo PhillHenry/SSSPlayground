@@ -22,12 +22,13 @@ object Consuming {
 
   def toTruncatedString(x: Any): String = if (x == null) "null" else x.toString.substring(0, math.min(x.toString.length, 100))
 
-  def streamToHDFS[T: Encoder](df: Dataset[T], sinkFile: String, processTimeMs: Long): DataStreamWriter[T] =
-    df.writeStream.format("parquet")
+  def streamToHDFS[T: Encoder](df: Dataset[T], sinkFile: String, maybeTrigger: Option[Trigger]): DataStreamWriter[T] = {
+    val stream = df.writeStream.format("parquet")
       .outputMode(OutputMode.Append()) // Data source parquet does not support Complete output mode;
       .option("path", sinkFile)
       .option("checkpointLocation", sinkFile + "checkpoint")
-      .trigger(Trigger.ProcessingTime(processTimeMs))
+    maybeTrigger.map(stream.trigger(_)).getOrElse(stream)
+  }
 
   def streamFromKafka(session: SparkSession, kafkaUrl: String, topicName: String): DataFrame =
     session

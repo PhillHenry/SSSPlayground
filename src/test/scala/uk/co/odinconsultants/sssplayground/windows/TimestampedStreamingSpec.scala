@@ -7,7 +7,7 @@ import org.apache.log4j.Logger
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery}
+import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery, Trigger}
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{Matchers, WordSpec}
 import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting.hdfsUri
@@ -40,7 +40,7 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
 
     "be written to HDFS even if there is data still to process (per SPARK-24156)" in {
       val dataFrame = sourceStream()//.withWatermark("timestamp", s"${processTimeMs / 2} $timeUnit") //<-- this watermark means nothing comes through
-      val query     = sink.writeStream(dataFrame, sinkFile, processTimeMs, None)(RowEncoder(dataFrame.schema))
+      val query     = sink.writeStream(dataFrame, sinkFile, Some(Trigger.ProcessingTime(processTimeMs)), None)(RowEncoder(dataFrame.schema))
 
       val console: StreamingQuery = dataFrame
         .writeStream
