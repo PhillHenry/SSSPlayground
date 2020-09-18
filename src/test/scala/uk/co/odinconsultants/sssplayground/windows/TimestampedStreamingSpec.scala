@@ -49,18 +49,18 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually wi
         .start()
 
       val nFirst        = 10
-      val producer      = createProducer(hostname, kafkaPort)
+      val producer      = kafkaProducer()
 
-      waitForAll(sendMessages(nFirst, producer, processTimeMs / nFirst))
+      waitForAll(sendDatumMessages(nFirst, producer, processTimeMs / nFirst))
 
 //      pauseMs(processTimeMs)
 
       val nSecond       = 9
-      waitForAll(sendMessages(nSecond, producer, processTimeMs / nSecond))
+      waitForAll(sendDatumMessages(nSecond, producer, processTimeMs / nSecond))
 
       pauseMs(processTimeMs * 4)
 
-      waitForAll(sendMessages(1, producer, processTimeMs / nFirst)) // dammit - I still need this to make the test pass!
+      waitForAll(sendDatumMessages(1, producer, processTimeMs / nFirst)) // dammit - I still need this to make the test pass!
       logQuery(console)
 
       Try {
@@ -94,16 +94,6 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually wi
   }
 
 
-  def sendMessages(n: Int, producer: KafkaProducer[String, String], pauseMS: Long) =
-    (1 to n).map { i =>
-      val now     = new java.util.Date()
-      val payload = s"${now.getTime}$DatumDelimiter${i * Math.PI}"
-      val record  = new ProducerRecord[String, String](topicName, i.toString, payload)
-      val jFuture = producer.send(record, ProducerCallback)
-      logger.info(s"Sent $payload (ts = $now)")
-      pauseMs(pauseMS)
-      jFuture
-    }
 
   private def logQuery(query: StreamingQuery) = {
     logger.info(s"lastProgress = ${query.lastProgress}")
