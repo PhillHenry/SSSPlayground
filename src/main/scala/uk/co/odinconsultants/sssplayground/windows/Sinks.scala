@@ -12,7 +12,7 @@ class Sink(format: String) {
                               sinkFile:       String,
                               trigger:        Option[Trigger],
                               partitionCol:   Option[String] = Some("period")): StreamingQuery = {
-    val stream            = Consuming.streamToHDFS(df, sinkFile, trigger)
+    val stream            = Consuming.streamToHDFS(df, sinkFile, format, trigger)
     val partitionedStream = partitionCol.map(p => stream.partitionBy(p)).getOrElse(stream)
     partitionedStream.start()
   }

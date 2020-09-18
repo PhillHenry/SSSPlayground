@@ -10,7 +10,7 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery, Trigger}
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{Matchers, WordSpec}
-import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting.hdfsUri
+import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting._
 import uk.co.odinconsultants.htesting.spark.SparkForTesting._
 import uk.co.odinconsultants.sssplayground.TestingKafka.{hostname, kafkaPort}
 import uk.co.odinconsultants.sssplayground.joins.RunningAverageMain.{DatumDelimiter, parsingDatum}
@@ -36,9 +36,11 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
 
     val sinkFile = randomFileName()
 
-    val sink     = Sinks(ParquetFormat)
+    val sink     = Sinks(DeltaFormat)
 
-    "be written to HDFS even if there is data still to process (per SPARK-24156)" in {
+    s"be written to $sinkFile even if there is data still to process (per SPARK-24156)" in {
+//      session.sql("set spark.databricks.delta.autoCompact.enabled = true")
+
       val dataFrame   = sourceStream()//.withWatermark("ts", s"${processTimeMs / 2} $timeUnit") //<-- this watermark means nothing comes through
       val someTrigger = Some(Trigger.ProcessingTime(processTimeMs))
       val query       = sink.writeStream(dataFrame, sinkFile, someTrigger, None)(RowEncoder(dataFrame.schema))
@@ -54,7 +56,13 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
       val nFirst        = 10
       val producer      = createProducer(hostname, kafkaPort)
 
-      waitForAll(sendMessages(nFirst, producer, processTimeMs / nFirst))
+      waitForAll({
+        val jFutures  = sendMessages(nFirst, producer, processTimeMs / nFirst)
+//        val sql       = s"OPTIMIZE delta.`/${sinkFile.substring(hdfsUri.length)}`"
+//        println(s"sql = $sql")
+//        session.sqlContext.sql(sql)
+        jFutures
+      })
 
 //      pauseMs(processTimeMs)
 
@@ -76,10 +84,14 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
           query.stop()
           fromDisk().show(false)
           fromDisk().collect().sortBy(_.getLong(0)).foreach(println)
+          listFiles()
           fail(e)
         case _ =>
+          listFiles()
       }
     }
+
+    def listFiles(): Unit = println(s"files:\n${list(sinkFile).mkString("\n")}")
 
     def fromDisk(): DataFrame = sink.readDataFrameFromHdfs(sinkFile, session)
 

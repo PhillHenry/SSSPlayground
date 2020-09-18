@@ -7,6 +7,7 @@ import org.apache.spark.sql.streaming.Trigger
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
 import uk.co.odinconsultants.sssplayground.kafka.Consuming._
 import uk.co.odinconsultants.sssplayground.spark.Init
+import uk.co.odinconsultants.sssplayground.windows.ParquetFormat
 
 import scala.annotation.tailrec
 
@@ -23,7 +24,7 @@ object RunningAverageMain {
 
     @tailrec
     def sample(): Unit = {
-      val query  = streamToHDFS(stream, sinkFile = args(2), Some(Trigger.ProcessingTime(args(3).toLong))).start()
+      val query  = streamToHDFS(stream, sinkFile = args(2), ParquetFormat.format, Some(Trigger.ProcessingTime(args(3).toLong))).start()
       Thread.sleep(pauseMS)
       query.stop()
       sample()

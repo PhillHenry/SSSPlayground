@@ -22,8 +22,11 @@ object Consuming {
 
   def toTruncatedString(x: Any): String = if (x == null) "null" else x.toString.substring(0, math.min(x.toString.length, 100))
 
-  def streamToHDFS[T: Encoder](df: Dataset[T], sinkFile: String, maybeTrigger: Option[Trigger]): DataStreamWriter[T] = {
-    val stream = df.writeStream.format("parquet")
+  def streamToHDFS[T: Encoder](df:            Dataset[T],
+                               sinkFile:      String,
+                               format:        String,
+                               maybeTrigger:  Option[Trigger]): DataStreamWriter[T] = {
+    val stream = df.writeStream.format(format)
       .outputMode(OutputMode.Append()) // Data source parquet does not support Complete output mode;
       .option("path", sinkFile)
       .option("checkpointLocation", sinkFile + "checkpoint")
