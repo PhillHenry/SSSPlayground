@@ -26,7 +26,7 @@ class FilePersistenceSpec extends WordSpec with Matchers with TestUtils {
     val processTimeMs = 2000
 
     "not create too many files" in {
-      val numPartitions           = 5
+      val numPartitions           = math.max(5, Runtime.getRuntime.availableProcessors())
       TestingKafka.createTopic(topicName, numPartitions)
 
       val dataSet: Dataset[Datum] = streamStringsFromKafka(session, s"$hostname:$kafkaPort", topicName, parsingDatum)
@@ -36,15 +36,16 @@ class FilePersistenceSpec extends WordSpec with Matchers with TestUtils {
 
       checkNoFilesInHDFS()
 
-      val nFirst        = numPartitions * 100
+      val nMessags      = numPartitions * 100
       val producer      = kafkaProducer()
 
-      waitForAll(sendDatumMessages(nFirst, producer, processTimeMs / nFirst))
+      waitForAll(sendDatumMessages(nMessags, producer, processTimeMs / nMessags))
       pauseMs(processTimeMs * 2)
-      val files: List[String] = listParquetFiles()
-      withClue(s"files:\n${files.mkString("\n")}") {
-        files.size should be >= numPartitions
-      }
+      val firstBatch = checkMinimumNumberOfFilesIs(numPartitions)
+
+      waitForAll(sendDatumMessages(nMessags, producer, processTimeMs / nMessags))
+      pauseMs(processTimeMs * 2)
+      checkMinimumNumberOfFilesIs(numPartitions + firstBatch.size)
     }
 
     def checkNoFilesInHDFS(): List[String] = {
@@ -60,6 +61,13 @@ class FilePersistenceSpec extends WordSpec with Matchers with TestUtils {
       println(s"files:\n${files.mkString("\n")}")
       files.map(_.toString).filter(_.endsWith(".parquet"))
     }
-  }
 
+    def checkMinimumNumberOfFilesIs(minNumFiles: Int): List[String] = {
+      val files: List[String] = listParquetFiles()
+      withClue(s"files:\n${files.mkString("\n")}") {
+        files.size should be >= minNumFiles
+      }
+      files
+    }
+  }
 }
