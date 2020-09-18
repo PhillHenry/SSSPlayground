@@ -10,6 +10,5 @@ object TestingKafka {
   val hostname    = "localhost"
   val zooKeeper   = ZookeeperSetUp(hostname, zkPort)
   val kafkaEnv    = new KafkaStarter(hostname, kafkaPort, zkPort, topicName)
-  val sinkFile    = "tmp_parquet"
   val kafkaServer = kafkaEnv.startKafka()
 }

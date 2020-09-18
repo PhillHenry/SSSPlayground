@@ -6,36 +6,36 @@ import org.apache.spark.sql.streaming.Trigger
 import org.scalatest.{Matchers, WordSpec}
 import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting.hdfsUri
 import uk.co.odinconsultants.htesting.spark.SparkForTesting._
-import uk.co.odinconsultants.sssplayground.LoggingToLocalFS
+import uk.co.odinconsultants.sssplayground.{LoggingToLocalFS, TestUtils}
 import uk.co.odinconsultants.sssplayground.TestingKafka._
 import uk.co.odinconsultants.sssplayground.kafka.Consuming.streamStringsFromKafka
 import uk.co.odinconsultants.sssplayground.kafka.ProducerMain.json
 import uk.co.odinconsultants.sssplayground.kafka.Producing.{PayloadFn, sendAndWait}
 import uk.co.odinconsultants.sssplayground.windows.ConsumeKafkaMain._
 
-class ConsumeKafkaMainSpec extends WordSpec with Matchers with LoggingToLocalFS {
+class ConsumeKafkaMainSpec extends WordSpec with Matchers with LoggingToLocalFS with TestUtils {
 
   import session.implicits._
 
   "Messages sent through Kafka" should {
     "be persisted to HDFS in Parquet format" in {
       val sink            = Sinks(ParquetFormat)
-      val hdfsDir         = hdfsUri + sinkFile
-      stream2BatchesTo(sink, hdfsDir)
+      val hdfsDir         = randomFileName()
+      stream2BatchesTo(sink, hdfsDir, topicName + System.nanoTime())
     }
     "be persisted to HDFS in Delta format" in {
       val sink            = Sinks(DeltaFormat)
-      val hdfsDir         = hdfsUri + sinkFile
-      stream2BatchesTo(sink, hdfsDir)
+      val hdfsDir         = randomFileName()
+      stream2BatchesTo(sink, hdfsDir, topicName + System.nanoTime())
     }
   }
 
-  val payloadFn: PayloadFn = _ => new ProducerRecord[String, String](topicName, json())
 
-  def stream2BatchesTo(sink: Sink, hdfsDir: String): Unit = {
+  def stream2BatchesTo(sink: Sink, hdfsDir: String, topicName: String): Unit = {
+    val payloadFn: PayloadFn = _ => new ProducerRecord[String, String](topicName, json())
     val stream          = streamStringsFromKafka(session, s"$hostname:$kafkaPort", topicName, trivialKafkaParseFn)
     val processTimeMs   = 2000
-    val query           = sink.writeStream(stream, hdfsUri + sinkFile, Some(Trigger.ProcessingTime(processTimeMs)))
+    val query           = sink.writeStream(stream, hdfsDir, Some(Trigger.ProcessingTime(processTimeMs)))
 
     val n = 10
     sendAndWait(payloadFn, hostname, kafkaPort, n).foreach(println)

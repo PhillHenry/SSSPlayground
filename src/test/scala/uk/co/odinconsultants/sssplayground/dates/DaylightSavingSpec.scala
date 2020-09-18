@@ -2,6 +2,7 @@ package uk.co.odinconsultants.sssplayground.dates
 
 import java.sql.Timestamp
 import java.text.SimpleDateFormat
+import java.util.TimeZone
 
 import org.scalatest.{Matchers, WordSpec}
 
@@ -27,8 +28,8 @@ class DaylightSavingSpec extends WordSpec with Matchers {
   }
 
   def toRecordTime(x: String): Timestamp = {
-//    val ApplicationTimeZone:    TimeZone    = TimeZone.getTimeZone("UTC")
-//    TimeZone.setDefault(ApplicationTimeZone)
+    val ApplicationTimeZone:    TimeZone    = TimeZone.getTimeZone("UTC")
+    TimeZone.setDefault(ApplicationTimeZone)
 
     val parser    = new SimpleDateFormat("dd/MM/yyyy HH:mm")
     val date      = parser.parse(x)
