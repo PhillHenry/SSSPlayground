@@ -2,7 +2,6 @@ package uk.co.odinconsultants.sssplayground.dates
 
 import java.sql.Timestamp
 import java.text.SimpleDateFormat
-import java.util.TimeZone
 
 import org.scalatest.{Matchers, WordSpec}
 

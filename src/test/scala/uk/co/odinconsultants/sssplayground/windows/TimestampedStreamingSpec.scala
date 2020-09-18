@@ -12,6 +12,7 @@ import org.scalatest.concurrent.Eventually
 import org.scalatest.{Matchers, WordSpec}
 import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting._
 import uk.co.odinconsultants.htesting.spark.SparkForTesting._
+import uk.co.odinconsultants.sssplayground.TestUtils
 import uk.co.odinconsultants.sssplayground.TestingKafka.{hostname, kafkaPort}
 import uk.co.odinconsultants.sssplayground.joins.RunningAverageMain.{DatumDelimiter, parsingDatum}
 import uk.co.odinconsultants.sssplayground.kafka.Consuming.streamStringsFromKafka
@@ -19,13 +20,7 @@ import uk.co.odinconsultants.sssplayground.kafka.Producing.{PayloadFn, ProducerC
 
 import scala.util.{Failure, Try}
 
-class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
-
-  val topicName = this.getClass.getSimpleName
-
-  val logger = Logger.getLogger(this.getClass)
-
-  def randomFileName(): String = hdfsUri + this.getClass.getSimpleName + System.nanoTime()
+class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually with TestUtils {
 
   val processTimeMs = 2000
   val timeUnit      = "milliseconds"
@@ -56,13 +51,7 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
       val nFirst        = 10
       val producer      = createProducer(hostname, kafkaPort)
 
-      waitForAll({
-        val jFutures  = sendMessages(nFirst, producer, processTimeMs / nFirst)
-//        val sql       = s"OPTIMIZE delta.`/${sinkFile.substring(hdfsUri.length)}`"
-//        println(s"sql = $sql")
-//        session.sqlContext.sql(sql)
-        jFutures
-      })
+      waitForAll(sendMessages(nFirst, producer, processTimeMs / nFirst))
 
 //      pauseMs(processTimeMs)
 
@@ -137,11 +126,6 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually {
       .groupBy('id, overWindow)
       .agg(count('id).as("count_id"), mean('amount), last('ts))
       .toDF( "id", "timestamp", "count", "mean", "ts")
-  }
-
-  private def pauseMs(dataWindow: Long) = {
-    logger.info(s"Pausing for $dataWindow ms")
-    Thread.sleep(dataWindow)
   }
 
   def dataToString(id2Data: Map[Int, String]): PayloadFn = { id =>
