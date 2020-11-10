@@ -43,7 +43,7 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually wi
       val console: StreamingQuery = dataFrame
         .writeStream
         .format("console")
-        .outputMode(OutputMode.Complete())
+        .outputMode(OutputMode.Append())
         .option("truncate", "false")
         .queryName("console")
         .start()
