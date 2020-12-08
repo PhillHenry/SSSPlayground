@@ -3,8 +3,8 @@ package uk.co.odinconsultants.sssplayground.delta
 import uk.co.odinconsultants.htesting.spark.SparkForTesting.session
 import uk.co.odinconsultants.sssplayground.delta.DatasetInspections.readCached
 
-object SparkUpdate {
-  import SparkMain._
+object DeltaLakeUpdate {
+  import DeltaLakeSetup._
 
   def main(args: Array[String]): Unit = {
     import session.implicits._

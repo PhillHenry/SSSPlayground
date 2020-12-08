@@ -6,7 +6,7 @@ import uk.co.odinconsultants.htesting.spark.SparkForTesting.session
 import uk.co.odinconsultants.sssplayground.TestUtils
 import uk.co.odinconsultants.sssplayground.delta.DatasetInspections.printSorted
 
-object SparkMain extends TestUtils {
+object DeltaLakeSetup extends TestUtils {
 
   val INDEX_COL = "index"
   val VALUE_COL = "value"
