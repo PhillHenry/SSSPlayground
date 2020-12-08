@@ -1,7 +1,7 @@
 package uk.co.odinconsultants.sssplayground.delta
 
 import uk.co.odinconsultants.htesting.spark.SparkForTesting.session
-import uk.co.odinconsultants.sssplayground.delta.DatasetInspections.readCached
+import uk.co.odinconsultants.sssplayground.delta.DatasetInspections._
 
 object DeltaLakeUpdate {
   import DeltaLakeSetup._
@@ -12,7 +12,7 @@ object DeltaLakeUpdate {
     val toUpdate  = 3L
     val df        = session.range(10).map(i => (toUpdate, i)).toDF(INDEX_COL, VALUE_COL)
 
-    readCached(dir)
+    val before = readCached(dir)
 
     df.write
       .format("delta")
@@ -20,7 +20,9 @@ object DeltaLakeUpdate {
       .option("replaceWhere", s"$INDEX_COL = $toUpdate")
       .save(dir)
 
-    readCached(dir)
+    val after = readWithoutCache(dir)
+
+    println(s"Is the data the same after a call to 'replaceWhere'? ${before.deep == after.deep}")
   }
 
 }

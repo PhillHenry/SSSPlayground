@@ -7,6 +7,8 @@ object DatasetInspections {
 
   def readCached(dir: String): Array[Row] = printSorted(session.read.format("delta").load(dir).cache())
 
+  def readWithoutCache(dir: String): Array[Row] = printSorted(session.read.format("delta").load(dir))
+
   def printSorted(fromDisk: DataFrame): Array[Row] = {
     val actual = fromDisk.collect().sortBy(_.getLong(0))
     println(s"Contents:\n${actual.mkString("\n")}")
