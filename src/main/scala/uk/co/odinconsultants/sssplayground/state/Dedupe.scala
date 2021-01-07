@@ -16,8 +16,7 @@ object Dedupe {
   case class StateClass(totalUsers: Int)
 
   val parsingUser: KafkaParseFn[User] = { case (k, v) =>
-    val Array(name, userIdStr) = v.split(DatumDelimiter)
-    Some(User(name, userIdStr.toInt))
+    Some(User(k, v.toInt))
   }
 
   def removeDuplicates(inputData: Dataset[User]): Dataset[User] = {

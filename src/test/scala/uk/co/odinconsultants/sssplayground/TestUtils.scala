@@ -4,10 +4,13 @@ import java.util.concurrent.Future
 
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord, RecordMetadata}
 import org.apache.log4j.Logger
+import org.apache.spark.sql.DataFrame
 import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting.hdfsUri
+import uk.co.odinconsultants.htesting.spark.SparkForTesting.session
 import uk.co.odinconsultants.sssplayground.TestingKafka.{hostname, kafkaPort}
 import uk.co.odinconsultants.sssplayground.joins.RunningAverageMain.DatumDelimiter
 import uk.co.odinconsultants.sssplayground.kafka.Producing.{ProducerCallback, createProducer}
+import uk.co.odinconsultants.sssplayground.windows.StreamingAssert
 
 import scala.collection.immutable
 
