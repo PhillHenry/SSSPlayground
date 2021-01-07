@@ -1,11 +1,15 @@
 package uk.co.odinconsultants.sssplayground
 
-import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
+import java.util.concurrent.Future
+
+import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord, RecordMetadata}
 import org.apache.log4j.Logger
 import uk.co.odinconsultants.htesting.hdfs.HdfsForTesting.hdfsUri
 import uk.co.odinconsultants.sssplayground.TestingKafka.{hostname, kafkaPort}
 import uk.co.odinconsultants.sssplayground.joins.RunningAverageMain.DatumDelimiter
 import uk.co.odinconsultants.sssplayground.kafka.Producing.{ProducerCallback, createProducer}
+
+import scala.collection.immutable
 
 trait TestUtils {
 
@@ -20,16 +24,30 @@ trait TestUtils {
     Thread.sleep(dataWindow)
   }
 
-  def sendDatumMessages(n: Int, producer: KafkaProducer[String, String], pauseMS: Long) =
-    (1 to n).map { i =>
+  type CreateMessageFn = (Int, java.util.Date) => String
+
+  val CreateDatumFn: CreateMessageFn = (i, now) => s"${now.getTime}$DatumDelimiter${i * Math.PI}"
+
+  type SendFutures = immutable.Seq[Future[RecordMetadata]]
+
+  def sendMessages(msgFn: CreateMessageFn, n: Int, producer: KafkaProducer[String, String], pauseMS: Long): SendFutures = {
+    val xs = (1 to n).map { i =>
       val now     = new java.util.Date()
-      val payload = s"${now.getTime}$DatumDelimiter${i * Math.PI}"
-      val record  = new ProducerRecord[String, String](topicName, i.toString, payload)
+      i.toString -> msgFn(i, now)
+    }
+    send(xs, producer, pauseMS)
+  }
+
+  def send(xs: Seq[(String, String)], producer: KafkaProducer[String, String], pauseMS: Long): SendFutures = {
+    val mutable: Array[Future[RecordMetadata]] = xs.map { case (k, v) =>
+      val record  = new ProducerRecord[String, String](topicName, k, v)
       val jFuture = producer.send(record, ProducerCallback)
-      logger.info(s"Sent $payload (ts = $now)")
+      logger.info(s"Sent $k -> $v")
       pauseMs(pauseMS)
       jFuture
-    }
+    }.toArray
+    collection.immutable.Seq(mutable: _*)
+  }
 
   def kafkaProducer(): KafkaProducer[String, String] = createProducer(hostname, kafkaPort)
 }

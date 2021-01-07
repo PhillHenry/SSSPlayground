@@ -51,16 +51,16 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually wi
       val nFirst        = 10
       val producer      = kafkaProducer()
 
-      waitForAll(sendDatumMessages(nFirst, producer, processTimeMs / nFirst))
+      waitForAll(sendMessages(CreateDatumFn, nFirst, producer, processTimeMs / nFirst))
 
 //      pauseMs(processTimeMs)
 
       val nSecond       = 9
-      waitForAll(sendDatumMessages(nSecond, producer, processTimeMs / nSecond))
+      waitForAll(sendMessages(CreateDatumFn, nSecond, producer, processTimeMs / nSecond))
 
       pauseMs(processTimeMs * 4)
 
-      waitForAll(sendDatumMessages(1, producer, processTimeMs / nFirst)) // dammit - I still need this to make the test pass!
+      waitForAll(sendMessages(CreateDatumFn, 1, producer, processTimeMs / nFirst)) // dammit - I still need this to make the test pass!
       logQuery(console)
 
       Try {

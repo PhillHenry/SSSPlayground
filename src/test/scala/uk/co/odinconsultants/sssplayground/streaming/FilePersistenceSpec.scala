@@ -39,11 +39,11 @@ class FilePersistenceSpec extends WordSpec with Matchers with TestUtils {
       val nMessags      = numPartitions * 100
       val producer      = kafkaProducer()
 
-      waitForAll(sendDatumMessages(nMessags, producer, processTimeMs / nMessags))
+      waitForAll(sendMessages(CreateDatumFn, nMessags, producer, processTimeMs / nMessags))
       pauseMs(processTimeMs * 2)
       val firstBatch = checkMinimumNumberOfFilesIs(numPartitions)
 
-      waitForAll(sendDatumMessages(nMessags, producer, processTimeMs / nMessags))
+      waitForAll(sendMessages(CreateDatumFn, nMessags, producer, processTimeMs / nMessags))
       pauseMs(processTimeMs * 2)
       checkMinimumNumberOfFilesIs(numPartitions + firstBatch.size)
 

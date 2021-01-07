@@ -1,14 +1,24 @@
 package uk.co.odinconsultants.sssplayground.state
 
+import java.sql.Timestamp
+
 import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.streaming.{GroupState, GroupStateTimeout, OutputMode}
+import uk.co.odinconsultants.sssplayground.joins.RunningAverageMain.{Datum, DatumDelimiter}
+import uk.co.odinconsultants.sssplayground.kafka.Consuming.KafkaParseFn
 
 /**
  * See https://stackoverflow.com/questions/65604303/using-flatmapgroupswithstate-with-foreachbatch
  */
 object Dedupe {
+
   case class User(name: String, userId: Integer)
   case class StateClass(totalUsers: Int)
+
+  val parsingUser: KafkaParseFn[User] = { case (k, v) =>
+    val Array(name, userIdStr) = v.split(DatumDelimiter)
+    Some(User(name, userIdStr.toInt))
+  }
 
   def removeDuplicates(inputData: Dataset[User]): Dataset[User] = {
     import inputData.sparkSession.implicits._
