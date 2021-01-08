@@ -1,6 +1,6 @@
 package uk.co.odinconsultants.sssplayground.state
 
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{DataFrame, Dataset}
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery, Trigger}
 import org.scalatest.{Assertions, Matchers, WordSpec}
@@ -39,8 +39,9 @@ class DedupeSpec extends WordSpec with Matchers with TestUtils with Assertions {
       val someTrigger = Some(Trigger.ProcessingTime(pauseMS))
       val query       = sink.writeStream(dataFrame, sinkFile, someTrigger, None)(RowEncoder(dataFrame.schema))
 
-      val console: StreamingQuery = dataFrame
-        .writeStream
+      val writingBatch = userStream.writeStream.foreachBatch(writeBatch)
+
+      val console: StreamingQuery = writingBatch
         .format("console")
         .outputMode(OutputMode.Append())
         .option("truncate", "false")

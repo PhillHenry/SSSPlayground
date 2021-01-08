@@ -12,6 +12,10 @@ import uk.co.odinconsultants.sssplayground.kafka.Consuming.KafkaParseFn
  */
 object Dedupe {
 
+  val writeBatch: (Dataset[User], Long) => Unit = { case (batch, batchId) =>
+    val distinctBatch = removeDuplicates(batch)
+  }
+
   case class User(name: String, userId: Integer)
   case class StateClass(totalUsers: Int)
 
