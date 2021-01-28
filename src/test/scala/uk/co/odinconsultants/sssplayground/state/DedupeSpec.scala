@@ -59,6 +59,7 @@ class DedupeSpec extends WordSpec with Matchers with TestUtils with Assertions {
       pauseMs(pauseMS * 2)
 
       waitFor((firstBatchIds ++ secondBatchIds).toSet.size)
+      console.stop()
 
     }
     def waitFor(nMessages: Int): Unit = {

@@ -77,6 +77,8 @@ class TimestampedStreamingSpec extends WordSpec with Matchers with Eventually wi
           fail(e)
         case _ =>
           listFiles()
+          query.stop()
+          console.stop()
       }
     }
 

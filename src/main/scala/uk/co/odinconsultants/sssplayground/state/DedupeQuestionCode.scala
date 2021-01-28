@@ -9,6 +9,9 @@ import org.apache.spark.sql.{DataFrame, Dataset, SQLContext, SparkSession}
 
 object DedupeQuestionCode { // from https://ideone.com/nZ5pq2
 
+  val EventTime = "eventTime"
+  val UserId    = "userId"
+  val Name      = "name"
   case class User(name: String, userId: Integer, eventTime: Timestamp)
   case class StateClass(totalUsers: Int)
 
@@ -18,9 +21,6 @@ object DedupeQuestionCode { // from https://ideone.com/nZ5pq2
 
   def removeDuplicates(inputData: Dataset[User], spark: SparkSession): Dataset[User] = {
     import spark.implicits._
-    val overWindow  = window('ts,
-      windowDuration = timeoutDuration, slideDuration   = timeoutDuration
-    )
     inputData
       .groupByKey(_.userId)
       .flatMapGroupsWithState(OutputMode.Append, GroupStateTimeout.ProcessingTimeTimeout)(removeDuplicatesInternal)
@@ -87,17 +87,19 @@ object DedupeQuestionCode { // from https://ideone.com/nZ5pq2
 
     val dedupedStream = removeDuplicates(datasetStream, spark)
     import org.apache.spark.sql.functions._
+
     dedupedStream
       .writeStream.format("console").outputMode(OutputMode.Append())
       .foreachBatch(showBatch)
       .start()
 
     val firstTime = now()
-    memoryStream.addData(Seq(
+    val firstUsers = Seq(
       User("mark", 111, firstTime),
       User("john", 123, firstTime),
       User("sean", 111, firstTime)
-    ))
+    )
+    memoryStream.addData(firstUsers)
 
     Thread.sleep(3000)
     println("1st Batch over")
