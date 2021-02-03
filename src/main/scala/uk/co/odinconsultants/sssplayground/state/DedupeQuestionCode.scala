@@ -12,18 +12,34 @@ object DedupeQuestionCode { // from https://ideone.com/nZ5pq2
   val EventTime = "eventTime"
   val UserId    = "userId"
   val Name      = "name"
-  case class User(name: String, userId: Integer, eventTime: Timestamp)
-  case class StateClass(totalUsers: Int)
+  case class User(name: String, userId: Integer, age: Integer, eventTime: Timestamp)
+  case class StateClass(totalUsers: Int, payload: String)
 
   val timeoutDuration = "2 seconds"
 
   def now(): Timestamp = new Timestamp(new java.util.Date().getTime)
+
+  def mark(firstTime: Timestamp):   User = User("mark", 111, 21, firstTime)
+  def john(firstTime: Timestamp):   User = User("john", 123, 22, firstTime)
+  def sean(firstTime: Timestamp):   User = User("sean", 111, 22, firstTime)
+  def robin(firstTime: Timestamp):  User = User("robin", 123, 23, firstTime)
+  def stuart(firstTime: Timestamp): User = User("stuart", 14, 23, firstTime)
+  def tom(firstTime: Timestamp):    User = User("tom", 111, 24, firstTime)
+  def mike(firstTime: Timestamp):   User = User("mike", 123, 25, firstTime)
 
   def removeDuplicates(inputData: Dataset[User], spark: SparkSession): Dataset[User] = {
     import spark.implicits._
     inputData
       .groupByKey(_.userId)
       .flatMapGroupsWithState(OutputMode.Append, GroupStateTimeout.ProcessingTimeTimeout)(removeDuplicatesInternal)
+      .groupByKey(_.age)
+      .flatMapGroupsWithState(OutputMode.Append, GroupStateTimeout.ProcessingTimeTimeout)(anotherGroupWithState)
+  }
+
+  def anotherGroupWithState(id: Integer, newData: Iterator[User], state: GroupState[StateClass]): Iterator[User] = {
+    val newDataList = newData.toList
+    println(s"anotherGroupWithState id = $id, newDataList = $newDataList, state = $state")
+    newDataList.iterator
   }
 
   def removeDuplicatesInternal(id: Integer, newData: Iterator[User], state: GroupState[StateClass]): Iterator[User] = {
@@ -39,14 +55,14 @@ object DedupeQuestionCode { // from https://ideone.com/nZ5pq2
 
     if (!state.exists) {
       val firstUserData = newData.next()
-      val newState = StateClass(1) // Total count = 1 initially
+      val newState = StateClass(1, s"${now()}-$id") // Total count = 1 initially
       state.update(newState)
       state.setTimeoutDuration(timeoutDuration)
       println(s"State does not exist. Creating: $state and returning $firstUserData")
       Iterator(firstUserData) // Returning UserData first time
     }
     else {
-      val newState = StateClass(state.get.totalUsers + 1)
+      val newState = StateClass(state.get.totalUsers + 1, s"${now()}-$id")
       state.update(newState)
       state.setTimeoutDuration(timeoutDuration)
       println(s"updating state: $state")
@@ -95,9 +111,9 @@ object DedupeQuestionCode { // from https://ideone.com/nZ5pq2
 
     val firstTime = now()
     val firstUsers = Seq(
-      User("mark", 111, firstTime),
-      User("john", 123, firstTime),
-      User("sean", 111, firstTime)
+      mark(firstTime),
+      john(firstTime),
+      sean(firstTime)
     )
     memoryStream.addData(firstUsers)
 
@@ -105,13 +121,14 @@ object DedupeQuestionCode { // from https://ideone.com/nZ5pq2
     println("1st Batch over")
 
     memoryStream.addData(Seq(
-      User("robin", 123, firstTime),
-      User("stuart", 14, firstTime),
-      User("tom", 111, firstTime),
-      User("mike", 123, firstTime)
+      robin(firstTime),
+      stuart(firstTime),
+      tom(firstTime),
+      mike(firstTime)
     ))
     Thread.sleep(3000)
     println("2nd Batch over")
+    println("That's all folks. Any errors after this point are irrelevant")
   }
 
   val showBatchDF: (DataFrame, Long) => Unit = { case (batch, batchId) =>

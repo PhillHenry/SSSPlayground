@@ -17,8 +17,14 @@ object DeltaLakeSetup extends TestUtils {
     val df    = session.range(10).map(i => (i, i)).toDF(INDEX_COL, VALUE_COL)
     df.write.partitionBy(INDEX_COL).format("delta").save(dir)
     println(s"dir = $dir")
+
     val fromDisk = session.read.format("delta").load(dir).cache()
+
     printSorted(fromDisk)
+    val partitionPruning = fromDisk.where(s"$INDEX_COL == 1")
+    println("Explaining...")
+    partitionPruning.explain()
+    println(s"after partition pruning = ${partitionPruning.collect().mkString("\n")}")
     println("Pausing. Press return to continue")
     scala.io.StdIn.readLine()
     printSorted(fromDisk)
