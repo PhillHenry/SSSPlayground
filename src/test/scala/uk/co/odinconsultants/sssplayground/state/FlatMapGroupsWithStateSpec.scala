@@ -25,7 +25,7 @@ import scala.util.{Failure, Success, Try}
 class FlatMapGroupsWithStateSpec extends WordSpec with Matchers {
 
   "Streams" should {
-    "show user" ignore new TestUtils {
+    "show user" in new TestUtils {
       import session.implicits._
       implicit val sqlCtx: SQLContext = session.sqlContext
       val path          = randomFileName()
@@ -56,6 +56,7 @@ class FlatMapGroupsWithStateSpec extends WordSpec with Matchers {
         }
       }
 //      examineStore(dir)
+      println("Stopping")
       memoryStream.stop()
       stream2.stop()
     }
@@ -141,18 +142,7 @@ class FlatMapGroupsWithStateSpec extends WordSpec with Matchers {
           if (valueSize < 0) {
             println(s"remove($keyRow) in $fileToRead")
           } else {
-            val stateDeserializerExpr = stateDeserializerExprAdapted(session)
-            val stateDeserializerFunc =
-              ObjectOperator.deserializeRowToObject(stateDeserializerExpr, StructTypeAccess.toAttribute(stateSchema))
-            val valueRowBuffer = new Array[Byte](valueSize)
-            ByteStreams.readFully(input, valueRowBuffer, 0, valueSize)
-            val valueRow = new UnsafeRow(1)
-            val deserialized = stateDeserializerFunc(valueRow)
-            // If valueSize in existing file is not multiple of 8, floor it to multiple of 8.
-            // This is a workaround for the following:
-            // Prior to Spark 2.3 mistakenly append 4 bytes to the value row in
-            // `RowBasedKeyValueBatch`, which gets persisted into the checkpoint data
-            valueRow.pointTo(valueRowBuffer, (valueSize / 8) * 8)
+            val (valueRow: UnsafeRow, deserialized: Any) = deserialize(input, valueSize)
             println(s"map.put(key = $keyRow,  value = $valueRow) [$deserialized] in $fileToRead")
           }
         }
@@ -162,6 +152,22 @@ class FlatMapGroupsWithStateSpec extends WordSpec with Matchers {
       if (input != null) input.close()
     }
     bytesRead
+  }
+
+  private def deserialize(input: DataInputStream, valueSize: Int) = {
+    val stateDeserializerExpr = stateDeserializerExprAdapted(session)
+    val stateDeserializerFunc =
+      ObjectOperator.deserializeRowToObject(stateDeserializerExpr, StructTypeAccess.toAttribute(stateSchema))
+    val valueRowBuffer = new Array[Byte](valueSize)
+    ByteStreams.readFully(input, valueRowBuffer, 0, valueSize)
+    val valueRow = new UnsafeRow(1)
+    valueRow.pointTo(valueRowBuffer, (valueSize / 8) * 8)
+    val deserialized = stateDeserializerFunc(valueRow)
+    // If valueSize in existing file is not multiple of 8, floor it to multiple of 8.
+    // This is a workaround for the following:
+    // Prior to Spark 2.3 mistakenly append 4 bytes to the value row in
+    // `RowBasedKeyValueBatch`, which gets persisted into the checkpoint data
+    (valueRow, deserialized)
   }
 
   val stateSchema: StructType = StructType(Seq(StructField("totalUsers", IntegerType, true), StructField("payload", StringType, true)))
