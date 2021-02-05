@@ -20,6 +20,7 @@ import uk.co.odinconsultants.sssplayground.TestUtils
 import uk.co.odinconsultants.sssplayground.state.DedupeQuestionCode._
 
 import java.io.{DataInputStream, FileNotFoundException, IOException}
+import scala.collection.mutable.ArrayBuffer
 import scala.util.{Failure, Success, Try}
 
 class FlatMapGroupsWithStateSpec extends WordSpec with Matchers {
@@ -49,13 +50,19 @@ class FlatMapGroupsWithStateSpec extends WordSpec with Matchers {
       val manager = new FileSystemBasedCheckpointFileManager(statePath, HdfsForTesting.conf)
       manager.list(new Path(path)).foreach(x => println(s"file = $x"))
 
-      HdfsForTesting.list(dir).foreach { p =>
+      val states: Seq[StateClass] = HdfsForTesting.list(dir).foldLeft(new ArrayBuffer[StateClass]()) { (acc, p) =>
         attemptRead(p, manager) match {
-          case Success(_) =>
-          case Failure(x) => println(s"Could not read $p")
+          case Success(xs) =>
+            acc ++ xs
+          case Failure(_) =>
+            println(s"Could not read $p")
+            acc
         }
       }
-//      examineStore(dir)
+
+      states should have size 1
+      val state = states.head
+      state.totalUsers shouldBe 1
       println("Stopping")
       memoryStream.stop()
       stream2.stop()
@@ -80,21 +87,15 @@ class FlatMapGroupsWithStateSpec extends WordSpec with Matchers {
     val s = status.head
     println(s"list path $p")
     Try {
-      updateFromDeltaFile(p, manager)
+      updateFromDeltaFile[StateClass](p, manager)
     } match {
-      case Success(x) => println(s"Read $x bytes of $p of ${s.getLen}")
-      case Failure(exception) => println(s"Failed with ${exception.getMessage}")
+      case Success(xs) =>
+        xs.foreach(x => println(s"Deserialized $x"))
+        xs
+      case Failure(exception) =>
+        println(s"Failed with ${exception.getMessage}")
+        List.empty
     }
-  }
-
-  private def examineStore(dir: String) = {
-    val sqlConf: SQLConf = getDefaultSQLConf(0, 10)
-    val stateStoreProvider = HDFSBackedStateStoreProviderAccess.provider(HdfsForTesting.conf, dir, 1, 1, sqlConf)
-    val store: StateStore = stateStoreProvider.getStore(2)
-    println("store = " + store)
-    val unsafeRow = new UnsafeRow(2)
-    println("range = " + store.get(unsafeRow))
-    println(s"unsafeRow = $unsafeRow")
   }
 
   def getDefaultSQLConf(minDeltasForSnapshot: Int, numOfVersToRetainInMemory: Int): SQLConf = {
@@ -109,7 +110,7 @@ class FlatMapGroupsWithStateSpec extends WordSpec with Matchers {
   /**
    * Adapted from HDFSBackedStateStoreProvider.updateFromDeltaFile
    */
-  private def updateFromDeltaFile(fileToRead: Path, fm: FileSystemBasedCheckpointFileManager): Long = {
+  private def updateFromDeltaFile[T](fileToRead: Path, fm: FileSystemBasedCheckpointFileManager): List[T] = {
     var input: DataInputStream = null
     val sourceStream = try {
       fm.open(fileToRead)
@@ -118,14 +119,13 @@ class FlatMapGroupsWithStateSpec extends WordSpec with Matchers {
         throw new IllegalStateException(
           s"Error reading delta file $fileToRead of $this: $fileToRead does not exist", f)
     }
-    var bytesRead = 0L
+    val deserializedElements = new ArrayBuffer[T]()
     try {
       input = CodecAccess.decompressStream(sourceStream, "lz4") // snappy -> "FAILED_TO_UNCOMPRESS"
       var eof = false
 
       while(!eof) {
         val keySize = input.readInt()
-        bytesRead += keySize
         if (keySize == -1) {
           eof = true
         } else if (keySize < 0) {
@@ -144,6 +144,7 @@ class FlatMapGroupsWithStateSpec extends WordSpec with Matchers {
           } else {
             val (valueRow: UnsafeRow, deserialized: Any) = deserialize(input, valueSize)
             println(s"map.put(key = $keyRow,  value = $valueRow) [$deserialized] in $fileToRead")
+            deserializedElements += deserialized.asInstanceOf[T]
           }
         }
         keySize
@@ -151,7 +152,7 @@ class FlatMapGroupsWithStateSpec extends WordSpec with Matchers {
     } finally {
       if (input != null) input.close()
     }
-    bytesRead
+    deserializedElements.toList
   }
 
   private def deserialize(input: DataInputStream, valueSize: Int) = {
@@ -169,8 +170,6 @@ class FlatMapGroupsWithStateSpec extends WordSpec with Matchers {
     // `RowBasedKeyValueBatch`, which gets persisted into the checkpoint data
     (valueRow, deserialized)
   }
-
-  val stateSchema: StructType = StructType(Seq(StructField("totalUsers", IntegerType, true), StructField("payload", StringType, true)))
 
   /**
    * From StateManagerImplBase.stateDeserializerExpr

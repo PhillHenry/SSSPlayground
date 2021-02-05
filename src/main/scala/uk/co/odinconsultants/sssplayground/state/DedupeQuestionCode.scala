@@ -1,10 +1,10 @@
 package uk.co.odinconsultants.sssplayground.state
 
 import java.sql.Timestamp
-
 import org.apache.spark.sql.execution.streaming.MemoryStream
 import org.apache.spark.sql.functions.window
 import org.apache.spark.sql.streaming.{GroupState, GroupStateTimeout, OutputMode}
+import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset, SQLContext, SparkSession}
 
 object DedupeQuestionCode { // from https://ideone.com/nZ5pq2
@@ -13,6 +13,8 @@ object DedupeQuestionCode { // from https://ideone.com/nZ5pq2
   val UserId    = "userId"
   val Name      = "name"
   case class User(name: String, userId: Integer, age: Integer, eventTime: Timestamp)
+
+  val stateSchema: StructType = StructType(Seq(StructField("totalUsers", IntegerType, true), StructField("payload", StringType, true)))
   case class StateClass(totalUsers: Int, payload: String)
 
   val timeoutDuration = "2 seconds"
