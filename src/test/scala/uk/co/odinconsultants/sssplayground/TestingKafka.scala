@@ -16,7 +16,7 @@ object TestingKafka {
 
   def createTopic(topicName: String, numPartitions: Int) = {
     val adminClient = AdminClient.create(kafkaEnv.props)
-    val topics = Seq[NewTopic](new NewTopic(topicName, numPartitions, 1))
+    val topics = Seq[NewTopic](new NewTopic(topicName, numPartitions, 1.toShort))
     import scala.collection.JavaConverters._
     adminClient.createTopics(topics.asJava)
     adminClient.close()

@@ -7,7 +7,7 @@ import org.apache.spark.sql.{SQLContext, SparkSession}
 import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, encoderFor}
 import org.apache.spark.sql.catalyst.expressions.{BoundReference, CaseWhen, Expression, GetStructField, IsNull, Literal, UnsafeRow}
 import org.apache.spark.sql.execution.ObjectOperator
-import org.apache.spark.sql.execution.streaming.state.{HDFSBackedStateStoreProviderAccess, StateStore}
+import org.apache.spark.sql.execution.streaming.state.{StateStore}
 import org.apache.spark.sql.execution.streaming.{FileSystemBasedCheckpointFileManager, MemoryStream}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.streaming.StreamingQuery

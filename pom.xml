@@ -14,9 +14,10 @@
     <encoding>UTF-8</encoding>
     <scala.version>2.12.8</scala.version>
     <scala.compat.version>2.12</scala.compat.version>
-    <spark.version>2.4.2</spark.version>
-    <kafka.version>2.3.1</kafka.version>
-    <hadoop.version>2.8.0</hadoop.version>
+    <spark.version>3.2.3</spark.version>
+    <kafka.version>2.5.1</kafka.version>
+    <hadoop.version>3.3.1</hadoop.version>
+    <zookeeper.version>3.6.4</zookeeper.version>
     <zio.version>1.0.0-RC18-2</zio.version>
     <log4j.version>1.2.17</log4j.version>
     <slf4j.version>1.7.30</slf4j.version>
@@ -41,11 +42,6 @@
       <version>${log4j.version}</version>
     </dependency>
 
-    <dependency>
-      <groupId>uk.co.odinconsultants</groupId>
-      <artifactId>BigDataTesting_${scala.compat.version}</artifactId>
-      <version>0.8</version>
-    </dependency>
     <dependency>
       <groupId>org.scala-lang</groupId>
       <artifactId>scala-library</artifactId>
@@ -77,6 +73,12 @@
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-core_${scala.compat.version}</artifactId>
       <version>${spark.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>hadoop-client-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>
@@ -96,12 +98,18 @@
     <dependency>
       <groupId>org.apache.zookeeper</groupId>
       <artifactId>zookeeper</artifactId>
-      <version>3.4.14</version>
+      <version>${zookeeper.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-minicluster</artifactId>
       <version>${hadoop.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <!-- Need Hive 3 to work with Spark 2.3 -->
     <dependency>
@@ -128,6 +136,16 @@
       <groupId>dev.zio</groupId>
       <artifactId>zio_${scala.compat.version}</artifactId>
       <version>${zio.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>uk.co.odinconsultants</groupId>
+      <artifactId>BigDataTesting_${scala.compat.version}</artifactId>
+      <version>0.8</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>32.0.1-jre</version>
     </dependency>
   </dependencies>
 
